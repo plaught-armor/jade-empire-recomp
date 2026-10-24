@@ -23,7 +23,8 @@ slots of §3 depend on this).
 - `chitin.key` (KEY V1) indexes only `data/artcreatures.bif` (models, textures),
   `data/audio.bif` and `data/designer.bif` (7865 compiled scripts). It holds
   **no 2DA tables**.
-- `data/*.rim` (RIM V1.0, `tools/rim.py`) hold everything else. Area RIMs come
+- `data/*.rim` (RIM V1.0, `tools/rim`; every Odin tool under `tools/` builds with
+  `tools/build.sh` into `port/build/<tool>`) hold everything else. Area RIMs come
   in pairs: `j01_town.rim`-style module data (scripts, creatures, dialogs,
   triggers) and `a010-a.rim`-style geometry and textures.
 - 2DA tables: `data/miniglobal-a.rim` holds 350 global tables (appearance,
@@ -50,7 +51,7 @@ textures). The engine opens every override texture at startup.
 (`win32/tex_hd.odin`; the HD Textures row on the Video panel, `[Port] HDTEX`
 or `JE_HDTEX=0` turns it off, after a restart): its files are listed as
 override entries and win over an override file of the same name.
-`tools/dump_tex.py` dumps every texture (type 3017 TPCs in `chitin.key`'s
+`tools/dump_tex` dumps every texture (type 3017 TPCs in `chitin.key`'s
 BIFs and in `data/**/*.rim`, then `override/` `.txb` files, same layout,
 over the same names: 7597) and `tools/upscale_tex.py` writes them: x4, two new mips, then the
 original's mip chain unchanged. Colour textures go through
@@ -94,7 +95,7 @@ and `jec_p2_setup.ncs` (`native/coop_hero.odin`). A creature template is
 cached per resref after its first load, so the hero is chosen before boot.
 
 **2DA.** Archive copies are binary `2DA V2.b`; patched copies in `override/`
-are text `2DA V2.0`. `tools/twoda.py` reads both (`dump FILE [COLUMN…]`) and
+are text `2DA V2.0`. `tools/twoda` reads both (`dump FILE [COLUMN…]`) and
 resolves a table as the engine does (`game_table`: override first, then the
 two RIMs). Binary layout: magic `2DA V2.b\n`; column names, each
 tab-terminated, ended by a NUL; u32 row count; row labels, each
@@ -104,7 +105,7 @@ the pool and the pool ends the file, and all 443 shipped tables pass.
 
 ## §2 NWScript
 
-**Compiled scripts** (`.ncs`) are KotOR-style bytecode. `tools/ncs.py`
+**Compiled scripts** (`.ncs`) are KotOR-style bytecode. `tools/ncs`
 assembles a small expression language into `.ncs` and disassembles. Type
 codes on the VM stack: Int 3, Float 4, String 5, Object 6. The Jade Empire VM
 is **int-only on return**: the control channel reports the return cell's
@@ -112,11 +113,11 @@ type and value, so queries return ints (`FloatToInt(x * 1000.0)` for floats).
 Returning an Object yields type 0 and no value. An object's id is read by
 decoding `ObjectToString(o)`, eight lower-case hex digits, inside the script:
 the sum over k of `FindSubString("0123456789abcdef", GetSubString(s, k, 1))`
-× 16^(7−k), masked to 32 bits (`jeplay.object_id`). Example ids: player
+× 16^(7−k), masked to 32 bits (`jeplay.id_expr`). Example ids: player
 0x295a0000, Two Rivers lieutenant 0x115a000e. A String returns type 0 as
 well. `jeplay query` reads one with the same trick, one character per
 query: `GetStringLength(s)`, then each character's index in printable ASCII
-(`jeplay.Game.query_str`, 16 characters per frame, at most 256). A character
+(`jeplay.query_str`, 16 characters per frame, at most 256). A character
 outside printable ASCII reads as `?`.
 
 **Script sources.** `override/` ships some `.nss` sources beside their
@@ -155,7 +156,7 @@ calling one fails at run time.
 
 ## §3 Control channel and script slots
 
-The port opens a control channel (`port/src/win32/control.odin`); `tools/jectl.py`
+The port opens a control channel (`port/src/win32/control.odin`); `tools/jectl`
 is the client. Commands run between frames on the game thread: `wait N`,
 `key NAME`, `down/up NAME`, `btn L|R down|up`, `pad`, `axis leftx|lefty V`,
 `click`, `peek ADDR N`, `poke`, `objs` (object list to the game log), `area`,
@@ -166,7 +167,7 @@ is the client. Commands run between frames on the game thread: `wait N`,
 `ok R TYPE VALUE`: R is RunScript's result (0 failed), TYPE and VALUE the VM's
 return cell. Guest code is called with the CPU state saved and restored.
 
-**Script slots.** Because `override/` is indexed once (§1), `tools/jeplay.py`
+**Script slots.** Because `override/` is indexed once (§1), `tools/jeplay`
 creates 64 slots `override/zz_c00.ncs … zz_c63.ncs` (`jeplay init`, then
 restart) and assembles each command into the next slot in turn. A deferred
 command (`AssignCommand`, `DelayCommand`, `ActionDoCommand`) keeps only its
@@ -176,7 +177,7 @@ not rewritten until 63 later commands have run.
 **Latency.** The port reads `<dir>/in` once per presented frame and runs every
 whole line it finds, so a client that waits for each answer before sending
 the next pays a frame (~33 ms) per command. `jectl.send_batch` writes several
-lines at once and `Game.queries` runs several expressions in one frame; a
+lines at once and `jeplay.queries` runs several expressions in one frame; a
 fight round reads the player's and the foe's state in two frames instead of
 about fifteen, and watching a foe costs one `frame` + `anims` round trip per
 frame.
@@ -338,7 +339,7 @@ The model animation path: 0x60dd70 → 0x60dce0 → 0x60cbe0 → 0x6090a0 → 0x
 
 **Combat styles and attack names.** `GetCurrentStyle(creature)` returns a row
 of `stylesuperlist`. Its `styledata` column names a row of `styledata`, whose
-`animsound2da` column names the style's AS table (`twoda.py style GAMEDIR N`
+`animsound2da` column names the style's AS table (`twoda style GAMEDIR N`
 prints it). AS columns include `Label`, `Anim` (the model animation name),
 `AnimSpeed`, `MinRange`/`MaxRange` (metres), damage per type, `Unblockable`,
 `AIMoveType`, `RefractTime`, `KnockdownAvailable`. Anim names are generic
@@ -395,7 +396,7 @@ the area's `.hex` resource. Cells are pointy-top hexes: column j along world
 y (spacing 1.5 × cell), row r along world x (spacing 2 × half_w), odd columns
 shifted half a row in +x; index j × h + r. A cell's byte is its source byte
 + 1, kept below 0xfc; source bytes 0xfc and up are stored as is and block.
-Centre per 0x475f80, corners per 0x476040. `tools/hexgrid.py` parses it and
+Centre per 0x475f80, corners per 0x476040. `tools/hexgrid` parses it and
 routes on it (A* with a wall penalty, then string pulling).
 
 **Walking.** Playtests walk with real stick input, never jumps: jumps skip
@@ -406,7 +407,7 @@ the millimetre). A walk counts as stuck when STUCK_STEPS steps bring it no
 0.05 m closer to its waypoint (a slide along a wall moves every step yet gets
 nowhere). It then blocks what stopped it and replans, up to REPLANS times,
 then exits as a bug. When the leg crosses a soft 0xfe band (see
-`hexgrid.soft`), the whole connected band is blocked: a real wall is a long
+`hexgrid.soft_on_leg`), the whole connected band is blocked: a real wall is a long
 band, and blocking one disc of it only moves the route to the next crossing
 along it (the Tien's Landing teahouse ground floor, x ≈ 174–175.5). Otherwise
 a disc 1 m ahead is blocked, for a body or prop the grid lacks.

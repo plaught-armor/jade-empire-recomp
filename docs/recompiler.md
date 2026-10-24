@@ -513,8 +513,8 @@ The port then finds no device and falls back to the dummy driver.
 
 `JE_CTL=<dir>` (`win32/control.odin`) makes the empty file `<dir>/in`, reads the
 lines appended to it once per presented frame, and answers each line `<id> <command> args...` with `<id> ok
-[data]` or `<id> err <reason>` in `<dir>/out`. `tools/jectl.py` is the command
-line client and lists the syntax; `tools/jeplay.py` drives play with it. Input
+[data]` or `<id> err <reason>` in `<dir>/out`. `tools/jectl` is the command
+line client and lists the syntax; `tools/jeplay` drives play with it. Input
 commands queue real SDL events through the `JE_INPUT_SCRIPT` path. `wait N`
 holds every later command until N frames have been presented. `pad NAME N`
 and `axis NAME V` drive the virtual gamepad, `pad2` and `axis2` a second one,

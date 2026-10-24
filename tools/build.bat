@@ -1,10 +1,10 @@
 @echo off
 rem Builds the Odin tools into port\build on 64-bit Windows, as build.sh does
-rem on Linux: the recompiler (x86rec) and the analysis tools. The ones that
-rem disassemble use capstone 5.0.7, built here from its pinned source tarball
-rem (x86 only) into port\build\capstone, plus the flat-view shim
-rem tools\capstone\capstone.c, rebuilt every run. Run it from an "x64 Native
-rem Tools Command Prompt for VS" with odin on PATH.
+rem on Linux: the recompiler (x86rec), the analysis tools and the game data
+rem tools. The ones that disassemble use capstone 5.0.7, built here from its
+rem pinned source tarball (x86 only) into port\build\capstone, plus the
+rem flat-view shim tools\capstone\capstone.c, rebuilt every run. Run it from
+rem an "x64 Native Tools Command Prompt for VS" with odin on PATH.
 rem Usage: tools\build.bat [tool...]   (all when none given)
 setlocal
 cd /d "%~dp0.."
@@ -29,7 +29,7 @@ call :cc tools\capstone\capstone.c || exit /b 1
 if exist %OUT%\capstone.lib del %OUT%\capstone.lib
 lib /nologo /out:%OUT%\capstone.lib %OUT%\obj\*.obj || exit /b 1
 set TOOLS=%*
-if "%TOOLS%"=="" set TOOLS=x86rec inventory srcmap devcalls funcnames cmdtable untpf
+if "%TOOLS%"=="" set TOOLS=x86rec inventory srcmap devcalls funcnames cmdtable untpf rim twoda ncs jectl dump_tex jeplay
 for %%t in (%TOOLS%) do odin build tools\%%t -out:port\build\%%t.exe -o:speed || exit /b 1
 exit /b 0
 

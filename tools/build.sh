@@ -1,8 +1,9 @@
 #!/bin/sh
-# Builds the Odin tools into port/build: the recompiler (x86rec) and the
-# analysis tools. The ones that disassemble use capstone 5.0.7, built here
-# from its pinned source tarball (x86 only) into port/build/capstone, plus
-# the flat-view shim tools/capstone/capstone.c, rebuilt every run.
+# Builds the Odin tools into port/build: the recompiler (x86rec), the
+# analysis tools and the game data tools. The ones that disassemble use
+# capstone 5.0.7, built here from its pinned source tarball (x86 only) into
+# port/build/capstone, plus the flat-view shim tools/capstone/capstone.c,
+# rebuilt every run.
 # Usage: tools/build.sh [tool...]   (all when none given)
 set -e
 cd "$(dirname "$0")/.."
@@ -27,7 +28,7 @@ fi
 cc_cs tools/capstone/capstone.c
 rm -f "$out/libcapstone.a"
 ar rcs "$out/libcapstone.a" "$out"/obj/*.o
-tools="${*:-x86rec inventory srcmap devcalls funcnames cmdtable untpf}"
+tools="${*:-x86rec inventory srcmap devcalls funcnames cmdtable untpf rim twoda ncs jectl dump_tex jeplay}"
 for t in $tools; do
 	odin build "tools/$t" -out:"port/build/$t" -o:speed -microarch:native
 done

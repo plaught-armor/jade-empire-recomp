@@ -3,10 +3,12 @@
 package common
 
 import "core:fmt"
+import "core:math"
 import "core:os"
 import "core:slice"
 import "core:strconv"
 import "core:strings"
+import "core:unicode/utf8"
 import "../pe"
 
 TEXT_LO :: 0x401000
@@ -124,4 +126,154 @@ suffixed_strings :: proc(buf: []u8, exts: []string, lo, hi: int) -> []Str {
 		}
 	}
 	return out[:]
+}
+
+// Prints msg to stderr and exits 1, as a Python SystemExit(msg) does.
+die :: proc(format: string, args: ..any) -> ! {
+	fmt.eprintfln(format, ..args)
+	os.exit(1)
+}
+
+// Bytes read as Latin-1, returned as UTF-8.
+latin1 :: proc(b: []u8) -> string {
+	sb := strings.builder_make_len_cap(0, len(b))
+	for c in b do strings.write_rune(&sb, rune(c))
+	return strings.to_string(sb)
+}
+
+// Python's str.split() with no separator, over Latin-1 text.
+py_space :: proc(r: rune) -> bool {
+	switch r {
+	case '\t' ..= '\r', 0x1c ..= 0x20, 0x85, 0xa0:
+		return true
+	}
+	return false
+}
+
+py_fields :: proc(s: string) -> []string {
+	return strings.fields_proc(s, py_space)
+}
+
+// Python's str.splitlines() over Latin-1 text.
+py_splitlines :: proc(s: string) -> []string {
+	out: [dynamic]string
+	start, i := 0, 0
+	for i < len(s) {
+		r, n := utf8.decode_rune_in_string(s[i:])
+		switch r {
+		case '\n', '\v', '\f', 0x1c, 0x1d, 0x1e, 0x85:
+		case '\r':
+			if i + 1 < len(s) && s[i + 1] == '\n' do n += 1
+		case:
+			i += n
+			continue
+		}
+		append(&out, s[start:i])
+		i += n
+		start = i
+	}
+	if start < len(s) do append(&out, s[start:])
+	return out[:]
+}
+
+// Python's repr() of a float.
+py_repr_float :: proc(f: f64) -> string {
+	if f != f do return "nan"
+	if f > max(f64) do return "inf"
+	if f < -max(f64) do return "-inf"
+	buf: [64]u8
+	e := string(strconv.write_float(buf[:], f, 'e', -1, 64)) // "+1.5e+00"
+	sb := strings.builder_make()
+	if e[0] == '-' do strings.write_byte(&sb, '-')
+	x := strings.index_byte(e, 'e')
+	digits, _ := strings.remove_all(e[1:x], ".")
+	exp, _ := strconv.parse_int(e[x + 1:], 10)
+	// Python writes the shortest digits in fixed notation when the decimal
+	// point falls within 16 places, else as d.ddde+XX.
+	decpt, n := exp + 1, len(digits)
+	if -4 < decpt && decpt <= 16 {
+		switch {
+		case decpt <= 0:
+			strings.write_string(&sb, "0.")
+			for _ in 0 ..< -decpt do strings.write_byte(&sb, '0')
+			strings.write_string(&sb, digits)
+		case decpt >= n:
+			strings.write_string(&sb, digits)
+			for _ in 0 ..< decpt - n do strings.write_byte(&sb, '0')
+			strings.write_string(&sb, ".0")
+		case:
+			strings.write_string(&sb, digits[:decpt])
+			strings.write_byte(&sb, '.')
+			strings.write_string(&sb, digits[decpt:])
+		}
+	} else {
+		strings.write_byte(&sb, digits[0])
+		if n > 1 {
+			strings.write_byte(&sb, '.')
+			strings.write_string(&sb, digits[1:])
+		}
+		fmt.sbprintf(&sb, "e%s%02d", exp < 0 ? "-" : "+", abs(exp))
+	}
+	return strings.to_string(sb)
+}
+
+// Python's repr() of a str whose characters are all below 256.
+py_repr_str :: proc(s: string) -> string {
+	q: u8 = '\''
+	if strings.contains_rune(s, '\'') && !strings.contains_rune(s, '"') do q = '"'
+	sb := strings.builder_make()
+	strings.write_byte(&sb, q)
+	for r in s {
+		switch {
+		case r == rune(q) || r == '\\':
+			strings.write_byte(&sb, '\\')
+			strings.write_rune(&sb, r)
+		case r == '\t': strings.write_string(&sb, `\t`)
+		case r == '\n': strings.write_string(&sb, `\n`)
+		case r == '\r': strings.write_string(&sb, `\r`)
+		case r < 0x20 || 0x7f <= r && r <= 0xa0 || r == 0xad: fmt.sbprintf(&sb, `\x%02x`, r)
+		case: strings.write_rune(&sb, r)
+		}
+	}
+	strings.write_byte(&sb, q)
+	return strings.to_string(sb)
+}
+
+// Python's round(x): the nearest integer, ties to even.
+py_round :: proc(x: f64) -> int {
+	r := math.floor(x)
+	d := x - r
+	if d > 0.5 || d == 0.5 && int(r) & 1 != 0 do r += 1
+	return int(r)
+}
+
+// Python's math.hypot(x, y), correctly rounded (Python's result in all but
+// rare cases): the square root of x*x + y*y summed exactly in two doubles,
+// corrected by one Newton step on the exact residual. No FMA, so the same
+// on every target.
+py_hypot :: proc(x, y: f64) -> f64 {
+	two_prod :: proc(a, b: f64) -> (f64, f64) {
+		SPLIT :: 134217729.0 // 2^27 + 1, Dekker's split
+		p := a * b
+		ta, tb := SPLIT * a, SPLIT * b
+		ah, bh := ta - (ta - a), tb - (tb - b)
+		al, bl := a - ah, b - bh
+		return p, ((ah * bh - p) + ah * bl + al * bh) + al * bl
+	}
+	x, y := abs(x), abs(y)
+	if x < y do x, y = y, x
+	if x > max(f64) do return x
+	if y == 0 || x != x || y != y do return x + y
+	// Scale by a power of two so squares neither overflow nor go subnormal.
+	_, e := math.frexp(x)
+	scale := math.ldexp(1.0, -e)
+	x, y = x * scale, y * scale
+	xh, xl := two_prod(x, x)
+	yh, yl := two_prod(y, y)
+	s := xh + yh
+	sl := (xh - s) + yh + xl + yl // exact sum error, as x >= y
+	h := math.sqrt(s + sl)
+	hh, hl := two_prod(h, h)
+	h += ((s - hh) - hl + sl) / (2 * h)
+	return math.ldexp(h, e)
 }

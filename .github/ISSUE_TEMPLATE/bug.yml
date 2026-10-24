@@ -14,6 +14,13 @@ body:
       description: Output of `git rev-parse --short HEAD`.
     validations:
       required: true
+  - type: input
+    id: version
+    attributes:
+      label: Version line
+      description: The first line of the log, or the output of `jade --version`.
+    validations:
+      required: true
   - type: dropdown
     id: os
     attributes:

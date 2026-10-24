@@ -10,12 +10,17 @@ import "win32"
 import "x86"
 
 // Usage: jade <game dir> <unpacked exe>. The game runs with the game dir as
-// its working directory.
+// its working directory. `jade --version` prints the version line and exits.
 main :: proc() {
+	if len(os.args) == 2 && os.args[1] == "--version" {
+		print_version()
+		return
+	}
 	if len(os.args) != 3 {
-		fmt.eprintln("usage: jade <game dir> <unpacked JadeEmpire.exe>")
+		fmt.eprintln("usage: jade <game dir> <unpacked JadeEmpire.exe> | jade --version")
 		os.exit(2)
 	}
+	print_version()
 	exe := os.args[2]
 	x86.mem_init()
 	x86.fault_init()
@@ -72,4 +77,11 @@ main :: proc() {
 absolute :: proc(path: string) -> string {
 	abs, err := os.get_absolute_path(path, context.allocator)
 	return err == nil ? abs : path
+}
+
+// The line bug reports quote (the first of every log): the build ID online
+// peers compare (docs/hle.md §11), the target and the net protocol version.
+print_version :: proc() {
+	id := win32.JE_BUILD_ID if win32.JE_BUILD_ID != "" else "none"
+	fmt.eprintfln("jade: build %s (%v, %s), net protocol %d", id, ODIN_OS, ODIN_MICROARCH_STRING, win32.NET_VERSION)
 }

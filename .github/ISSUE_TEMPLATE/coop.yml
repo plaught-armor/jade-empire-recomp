@@ -15,13 +15,14 @@ body:
       description: Output of `git rev-parse --short HEAD` on each machine.
     validations:
       required: true
-  - type: input
-    id: build_id
+  - type: textarea
+    id: version
     attributes:
-      label: Build IDs
+      label: Version lines
       description: >-
-        Output of `port/build_id.sh linux` (or `windows`) on the host and on
-        the joiner. They must match.
+        The first line of each log, or the output of `jade --version`, on the
+        host and on the joiner (`jade: build ... net protocol ...`). The build
+        IDs must match.
     validations:
       required: true
   - type: input

@@ -358,7 +358,8 @@ included, the Odin version and the target OS, so two machines that build the
 same commit match whatever `-microarch` or linker each used, a native
 Windows build matches a cross-built one, and a Linux and a Windows peer never
 match; a build made without
-it hashes its own binary instead), the game exe hash and a hash of the names and
+it hashes its own binary instead; `jade --version` and the first line of
+every log print it), the game exe hash and a hash of the names and
 contents of the files under `override` and `textures_hd`; any difference is
 a REJECT with the reason logged on both sides. `Save`, `JadeEmpire.ini` and
 the gameplay settings are not compared: the joiner takes the host's (Save

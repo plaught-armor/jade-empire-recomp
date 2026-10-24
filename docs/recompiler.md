@@ -401,7 +401,9 @@ then needs no flag code.
   (97% and 90% identical over random inputs), and bit-identical across
   `-microarch` native, x86-64-v3 and x86-64 and every `-o` level. Arguments
   past 2^20·π/2 are first taken mod the f64 nearest 2π, exact but not accurate;
-  the game never gets there. `fpatan` (`math.atan2`) and `fyl2x`
+  the game never gets there. stb_vorbis takes its sin and cos from here too
+  (`win32/vorbis.c`), since its PCM lands in guest memory (hle.md §11).
+  `fpatan` (`math.atan2`) and `fyl2x`
   (`math.log2`) stay on Odin's own code, which is pure Odin and already
   deterministic. The natives (`quat.odin`, `emitter.odin`, the camera, turning
   and co-op code) and the guest-callable D3DX helpers call the same procs.

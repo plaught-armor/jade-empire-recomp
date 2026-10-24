@@ -7,10 +7,54 @@
 // imported. Host state is keyed by the guest OggVorbis_File address.
 package win32
 
+import "core:c"
 import "core:fmt"
 import "core:mem"
-import stbv "vendor:stb/vorbis"
 import "../x86"
+
+// stb_vorbis built from src/win32/vorbis.c by build.sh, build_windows.sh and
+// build.bat, not Odin's prebuilt vendor:stb/vorbis: the decoded samples are
+// guest state and must match across OSes.
+// WHY: docs/hle.md §11
+when ODIN_OS == .Windows {
+	foreign import vorbis_lib "../../build/win/vorbis.lib"
+} else {
+	foreign import vorbis_lib "../../build/libvorbis.a"
+}
+
+Stbv :: struct {}
+
+Stbv_Info :: struct {
+	sample_rate:                c.uint,
+	channels:                   c.int,
+	setup_memory_required:      c.uint,
+	setup_temp_memory_required: c.uint,
+	temp_memory_required:       c.uint,
+	max_frame_size:             c.int,
+}
+
+@(default_calling_convention = "c")
+foreign vorbis_lib {
+	@(link_name = "stb_vorbis_open_memory")
+	stbv_open_memory :: proc(data: [^]u8, len: c.int, error: ^c.int, alloc_buffer: rawptr) -> ^Stbv ---
+	@(link_name = "stb_vorbis_get_info")
+	stbv_get_info :: proc(f: ^Stbv) -> Stbv_Info ---
+	@(link_name = "stb_vorbis_close")
+	stbv_close :: proc(f: ^Stbv) ---
+	@(link_name = "stb_vorbis_stream_length_in_samples")
+	stbv_stream_length_in_samples :: proc(f: ^Stbv) -> c.uint ---
+	@(link_name = "stb_vorbis_seek")
+	stbv_seek :: proc(f: ^Stbv, sample_number: c.uint) -> c.int ---
+	@(link_name = "stb_vorbis_get_samples_short_interleaved")
+	stbv_get_samples_short_interleaved :: proc(f: ^Stbv, channels: c.int, buffer: [^]c.short, num_shorts: c.int) -> c.int ---
+}
+
+// vorbis.c's sin and cos.
+@(export, link_name = "je_vorbis_sin")
+vorbis_sin :: proc "c" (x: f64) -> f64 {return x86.sin_f64(x)}
+
+@(export, link_name = "je_vorbis_cos")
+vorbis_cos :: proc "c" (x: f64) -> f64 {return x86.cos_f64(x)}
 
 VORBIS := [?]Hle_Entry {
 	{"vorbisfile.dll!ov_test_callbacks", ov_test_callbacks},
@@ -29,7 +73,7 @@ OV_READ_CHUNK :: 0x10000
 OV_FILE_MAX :: 0x10000000
 
 Ov_File :: struct {
-	v:        ^stbv.vorbis,
+	v:        ^Stbv,
 	data:     []u8,
 	ch:       u32,
 	ds:       u32, // guest datasource
@@ -68,14 +112,14 @@ ov_test_callbacks :: proc() {
 	read_fn, close_fn := arg(4), arg(6)
 	if _, open := ov_files[vf]; open {ov_drop_reopened(vf)}
 	data := ov_slurp(read_fn, ds, initial, ibytes)
-	err: stbv.Error
-	v := stbv.open_memory(raw_data(data), i32(len(data)), &err, nil)
+	err: c.int
+	v := stbv_open_memory(raw_data(data), i32(len(data)), &err, nil)
 	if v == nil {
 		delete(data)
 		ret(0, transmute(u32)i32(OV_ENOTVORBIS))
 		return
 	}
-	info := stbv.get_info(v)
+	info := stbv_get_info(v)
 	vi := heap_alloc(OV_VI_SIZE, true)
 	x86.wr32(vi + 4, u32(info.channels))
 	x86.wr32(vi + 8, u32(info.sample_rate))
@@ -92,7 +136,7 @@ ov_test_callbacks :: proc() {
 ov_drop_reopened :: proc(vf: u32) {
 	f := ov_files[vf]
 	fmt.eprintf("vorbisfile: %08x reopened without ov_clear; old stream dropped\n", vf)
-	stbv.close(f.v)
+	stbv_close(f.v)
 	delete(f.data)
 	heap_free(f.vi)
 	delete_key(&ov_files, vf)
@@ -112,13 +156,13 @@ ov_pcm_total :: proc() {
 		return
 	}
 	x86.cpu.edx = 0
-	ret(0, u32(stbv.stream_length_in_samples(f.v)))
+	ret(0, u32(stbv_stream_length_in_samples(f.v)))
 }
 
 // int ov_pcm_seek(OggVorbis_File *vf, ogg_int64_t pos)
 ov_pcm_seek :: proc() {
 	f, lo, hi := ov_of(arg(0)), arg(1), arg(2)
-	if hi != 0 || lo > u32(stbv.stream_length_in_samples(f.v)) || stbv.seek(f.v, lo) == 0 {
+	if hi != 0 || lo > u32(stbv_stream_length_in_samples(f.v)) || stbv_seek(f.v, lo) == 0 {
 		ret(0, transmute(u32)i32(OV_EINVAL))
 		return
 	}
@@ -130,7 +174,7 @@ ov_read :: proc() {
 	f, buf, n, big, word, sgned, bs := ov_of(arg(0)), arg(1), arg(2), arg(3), arg(4), arg(5), arg(6)
 	if big != 0 || word != 2 || sgned != 1 {x86.fatal("ov_read: bigendian %d, word %d, signed %d", big, word, sgned)}
 	shorts := n / 2 / f.ch * f.ch
-	got := stbv.get_samples_short_interleaved(f.v, i32(f.ch), ([^]i16)(x86.ptr(buf)), i32(shorts))
+	got := stbv_get_samples_short_interleaved(f.v, i32(f.ch), ([^]i16)(x86.ptr(buf)), i32(shorts))
 	if bs != 0 {x86.wr32(bs, 0)}
 	ret(0, u32(got) * f.ch * 2)
 }
@@ -138,7 +182,7 @@ ov_read :: proc() {
 ov_clear :: proc() {
 	vf := arg(0)
 	f := ov_of(vf)
-	stbv.close(f.v)
+	stbv_close(f.v)
 	delete(f.data)
 	heap_free(f.vi)
 	if f.close_fn != 0 {guest_call_c(f.close_fn, f.ds)}

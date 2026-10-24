@@ -76,6 +76,12 @@ clang-cl --target=x86_64-pc-windows-msvc /std:c17 /O2 /W3 /WX /MT \
 	-imsvc "$XWIN/sdk/include/um" -imsvc "$XWIN/sdk/include/shared" \
 	/Ibuild/ffmpeg-win/include /c src/win32/movie.c /Fobuild/win/movie.obj
 llvm-lib /out:build/win/movie.lib build/win/movie.obj
+# stb_vorbis with deterministic sin and cos (src/win32/vorbis.c, build.sh).
+clang-cl --target=x86_64-pc-windows-msvc /std:c17 /O2 /w /MT /fp:precise -ffp-contract=off \
+	-imsvc "$XWIN/crt/include" -imsvc "$XWIN/sdk/include/ucrt" \
+	-imsvc "$XWIN/sdk/include/um" -imsvc "$XWIN/sdk/include/shared" \
+	"/I$odin_sys/vendor/stb/src" /c src/win32/vorbis.c /Fobuild/win/vorbis.obj
+llvm-lib /out:build/win/vorbis.lib build/win/vorbis.obj
 
 # Odin's -windows-sdk-root passes /winsysroot, which wants the MSVC folder
 # layout; xwin's splat layout needs the library paths named. With a large
@@ -86,7 +92,7 @@ ODIN_ROOT="$PWD/$root" odin build src -out:build/win/jade.exe -target:windows_am
 	-windows-sdk-root:"$XWIN" -linker:lld -use-separate-modules \
 	-o:"${JE_OPT:-speed}" -microarch:"${JE_ARCH:-x86-64-v3}" \
 	-define:GL_DEBUG="${JE_GL_DEBUG:-false}" \
-	-define:JE_BUILD_ID="$(python3 build_id.py windows)" \
+	-define:JE_BUILD_ID="$(python3 build_id.py)" \
 	-extra-linker-flags:"/libpath:$XWIN/crt/lib/x86_64 /libpath:$XWIN/sdk/lib/um/x86_64 /libpath:$XWIN/sdk/lib/ucrt/x86_64" \
 	"$@"
 

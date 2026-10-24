@@ -11,4 +11,9 @@ cd "$(dirname "$0")"
 mkdir -p build
 cc -std=c17 -O2 -g -Wall -Wextra -Werror -c src/win32/movie.c -o build/movie.o
 ar rcs build/libmovie.a build/movie.o
-odin build src -out:jade -use-separate-modules -debug -o:"${JE_OPT:-speed}" -microarch:"${JE_ARCH:-native}" -define:GL_DEBUG="${JE_GL_DEBUG:-false}" -define:JE_BUILD_ID="$(python3 build_id.py linux)" "$@"
+# stb_vorbis with deterministic sin and cos (src/win32/vorbis.c): its samples
+# are guest state, the same on every OS (docs/hle.md §11). Third-party code,
+# so its warnings are off; no FMA, no contraction.
+cc -std=c17 -O2 -g -w -ffp-contract=off -fno-fast-math -I"$(odin root)/vendor/stb/src" -c src/win32/vorbis.c -o build/vorbis.o
+ar rcs build/libvorbis.a build/vorbis.o
+odin build src -out:jade -use-separate-modules -debug -o:"${JE_OPT:-speed}" -microarch:"${JE_ARCH:-native}" -define:GL_DEBUG="${JE_GL_DEBUG:-false}" -define:JE_BUILD_ID="$(python3 build_id.py)" "$@"

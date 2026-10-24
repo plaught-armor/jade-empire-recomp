@@ -77,8 +77,11 @@ copy /y build\zlib-win\libz.lib "%ROOT%\vendor\zlib\" >nul || exit /b 1
 rem Bink movie decoding (src\win32\movie.c), static CRT (/MT) like Odin's.
 cl /nologo /std:c17 /O2 /W3 /WX /MT /Ibuild\ffmpeg-win\include /c src\win32\movie.c /Fobuild\win\movie.obj || exit /b 1
 lib /nologo /out:build\win\movie.lib build\win\movie.obj || exit /b 1
+rem stb_vorbis with deterministic sin and cos (src\win32\vorbis.c, build.sh).
+cl /nologo /std:c17 /O2 /w /MT /fp:precise /I"%ODIN_SYS%\vendor\stb\src" /c src\win32\vorbis.c /Fobuild\win\vorbis.obj || exit /b 1
+lib /nologo /out:build\win\vorbis.lib build\win\vorbis.obj || exit /b 1
 
-for /f %%i in ('python build_id.py windows') do set "BUILD_ID=%%i"
+for /f %%i in ('python build_id.py') do set "BUILD_ID=%%i"
 if not defined BUILD_ID (echo build_id.py failed. & exit /b 1)
 set "ODIN_ROOT=%ROOT%"
 odin build src -out:build\win\jade.exe -use-separate-modules -o:%JE_OPT% -microarch:%JE_ARCH% -define:GL_DEBUG=%JE_GL_DEBUG% -define:JE_BUILD_ID=%BUILD_ID% %* || exit /b 1

@@ -354,10 +354,20 @@ under lockstep (wall time otherwise).
 carries the port version, the build ID (`build_id.py`, which build.sh,
 build_windows.sh and build.bat pass in as `JE_BUILD_ID`: a hash of every
 file under `port/src` with line endings read as LF, the recompiled code
-included, the Odin version and the target OS, so two machines that build the
-same commit match whatever `-microarch` or linker each used, a native
-Windows build matches a cross-built one, and a Linux and a Windows peer never
-match; a build made without
+included, and the Odin version, so two machines that build the same commit
+match whatever `-microarch`, linker or OS each used: a native Windows build
+matches a cross-built one, and a Linux and a Windows peer play together, since
+no game state reads the host's libm: its cos, pow and exp reach only the
+audio mixer's gains and reverb, which never write guest memory. The Vorbis
+decoder does write guest memory (`ov_read` decodes PCM straight into the
+guest's buffer), so `win32/vorbis.c` builds stb_vorbis with its sin and cos
+taken from `x86/libm.odin`; the prebuilt stb_vorbis took them from each
+platform's libm, and a Linux and a Wine run then differed by 1 in 276 PCM
+samples from frame 10 on. Its pow, exp and log only size codebooks (integer
+results checked against exact powers), and floor and ldexp are exact. Tested:
+solo `JE_LOCKSTEP=10` hashes equal on Linux and Wine through frame 17600, and
+a Linux host with a Wine joiner checked hashes through frame 6960 with a save
+load and a fight. A build made without
 it hashes its own binary instead; `jade --version` and the first line of
 every log print it), the game exe hash and a hash of the names and
 contents of the files under `override` and `textures_hd`; any difference is

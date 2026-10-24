@@ -75,9 +75,9 @@ your friend appears in the window title and on the clipboard; UDP port 47000
 is opened through UPnP when the router allows it, otherwise forward it by
 hand. The other player picks **Online → Join Online Game** and types or pastes
 that address. Both players must have the same game files and builds of the
-port from the same commit with the same Odin version, on the same OS (the
-peers check; a Linux and a Windows player cannot play together). The CPU does
-not matter: the game's math is bit-exact on any x86-64 build. The joiner plays
+port from the same commit with the same Odin version (the peers check). The
+OS and CPU do not matter: a Linux and a Windows player can play together, and
+the game's math is bit-exact on any x86-64 build. The joiner plays
 on the host's save and settings. See `docs/hle.md` §11.
 
 ## Documentation

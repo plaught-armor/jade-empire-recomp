@@ -6,7 +6,7 @@ body:
     attributes:
       value: |
         Both players must run builds from the same commit with the same Odin
-        version, on the same OS (README.md, Online co-op). Do not attach game
+        version (README.md, Online co-op); Linux and Windows can mix. Do not attach game
         files or builds of the port.
   - type: input
     id: commit

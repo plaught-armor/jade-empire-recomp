@@ -351,11 +351,13 @@ that had it by frame 60, about 18800 heap bytes, every time.
 under lockstep (wall time otherwise).
 
 **Net protocol** (UDP). The joiner resends HELLO until WELCOME. HELLO
-carries the port version, the build ID (`build_id.sh`, which build.sh and
-build_windows.sh pass in as `JE_BUILD_ID`: a hash of every file under
-`port/src`, the recompiled code included, the Odin version and the target
-OS, so two machines that build the same commit match whatever `-microarch`
-each used, and a Linux and a Windows peer never match; a build made without
+carries the port version, the build ID (`build_id.py`, which build.sh,
+build_windows.sh and build.bat pass in as `JE_BUILD_ID`: a hash of every
+file under `port/src` with line endings read as LF, the recompiled code
+included, the Odin version and the target OS, so two machines that build the
+same commit match whatever `-microarch` or linker each used, a native
+Windows build matches a cross-built one, and a Linux and a Windows peer never
+match; a build made without
 it hashes its own binary instead), the game exe hash and a hash of the names and
 contents of the files under `override` and `textures_hd`; any difference is
 a REJECT with the reason logged on both sides. `Save`, `JadeEmpire.ini` and

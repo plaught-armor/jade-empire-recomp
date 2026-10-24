@@ -55,10 +55,18 @@ port/play.sh
 `port/build_windows.sh` cross-builds a Windows exe on Linux (needs clang-cl,
 lld-link and the Windows SDK splatted by [xwin](https://github.com/Jake-Shadle/xwin));
 it downloads the SDL3 and FFmpeg DLLs and zips everything as
-`port/build/jade-win.zip`, for your own use only. There is no native Windows
-build script yet. On Windows, put `jade.exe` and its DLLs in a folder
-together with your unpacked `JadeEmpire.exe` and run `play.bat`; set `GAME` if
-the game is not in the default Steam folder.
+`port/build/jade-win.zip`, for your own use only.
+
+To build on Windows itself, install Odin, Python and Visual Studio (or its
+Build Tools) with the C++ workload, run steps 1 and 2 above with `python`,
+then run `port\build.bat` from an *x64 Native Tools Command Prompt*. It
+downloads the SDL3, FFmpeg and zlib sources and DLLs it needs and writes
+`port\build\win`. It has not yet been tried on a real Windows PC.
+
+Either way, put your unpacked `JadeEmpire.exe` in `build\win` beside
+`jade.exe` and run `play.bat`; set `GAME` if the game is not in the default
+Steam folder. A native and a cross-built exe from the same commit and Odin
+version play online together.
 
 ## Online co-op
 

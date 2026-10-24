@@ -42,6 +42,17 @@ Iteration time (16 threads):
   which runs the game from the Steam folder with the unpacked
   `JadeEmpire.exe` beside it and logs to `logs\play-<timestamp>.log`. The
   zip never holds jade.pdb, game files or the unpacked exe.
+- `port/build.bat` builds the same `build\win` folder natively on Windows,
+  run from an x64 Native Tools Command Prompt (MSVC's `cl`, `lib` and
+  `link`), downloading FFmpeg, SDL3 and zlib with the `curl` and `tar` that
+  come with Windows 10. It mirrors build_windows.sh: the same library
+  versions, zlib built from source (Odin's `libz.lib` holds `/GL` objects,
+  which only an MSVC at least as new as the one that made them can link), a
+  shadow `ODIN_ROOT` of directory junctions (created, never removed:
+  deleting one recursively could reach into the Odin install), `/MT`,
+  `x86-64-v3`, and the same build ID, so its exe plays online with a
+  cross-built one. It makes no zip. Its flow was checked under Wine's `cmd`
+  with stub tools; it has not been run on Windows.
 
 ## §1 Function model
 
@@ -849,7 +860,8 @@ rather than the binary (docs/hle.md §11). v44
 (Zen 4) against v43, alternating: 6.27-6.37 against 6.37-6.65 M cycles per
 frame, instructions 13.61-13.66 to 13.34-13.42 M. The Windows build targets
 `x86-64-v3` (AVX2) instead, so one exe runs on any recent PC
-(`JE_ARCH=<microarch> ./build_windows.sh` changes it).
+(`JE_ARCH=<microarch>` before `./build_windows.sh` or `build.bat` changes
+it).
 
 ## §9 Guest patches
 

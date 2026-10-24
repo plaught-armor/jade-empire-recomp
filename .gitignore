@@ -3,6 +3,7 @@
 # copy of the exe: README.md) never go in.
 /*
 !/.gitignore
+!/.gitattributes
 !/LICENSE
 !/.github/
 !/README.md
@@ -16,7 +17,8 @@
 /port/src/rec/
 !/port/build.sh
 !/port/build_windows.sh
-!/port/build_id.sh
+!/port/build_id.py
+!/port/build.bat
 !/port/play.sh
 !/port/play.bat
 __pycache__/

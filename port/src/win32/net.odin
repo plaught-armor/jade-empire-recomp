@@ -1158,8 +1158,9 @@ state_hash :: proc() -> u64 {
 	return xxhash.XXH3_64_digest(&h)
 }
 
-// build_id.sh's hash of the sources, compiler and OS, which build.sh and
-// build_windows.sh pass in; without one, a hash of the binary itself.
+// build_id.py's hash of the sources, compiler and OS, which build.sh,
+// build_windows.sh and build.bat pass in; without one, a hash of the binary
+// itself.
 JE_BUILD_ID :: #config(JE_BUILD_ID, "")
 
 @(private = "file")

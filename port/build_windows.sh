@@ -6,7 +6,7 @@
 # $XWIN (default ~/.local/share/xwin; `xwin --accept-license splat --output
 # ~/.local/share/xwin`). The code targets x86-64-v3 (AVX2) unless JE_ARCH
 # names another -microarch, so one exe runs on any recent PC. Online peers
-# need the same build ID (build_id.sh, docs/hle.md §11). Other flags pass
+# need the same build ID (build_id.py, docs/hle.md §11). Other flags pass
 # through to odin, as in build.sh.
 set -eu
 cd "$(dirname "$0")"
@@ -86,7 +86,7 @@ ODIN_ROOT="$PWD/$root" odin build src -out:build/win/jade.exe -target:windows_am
 	-windows-sdk-root:"$XWIN" -linker:lld -use-separate-modules \
 	-o:"${JE_OPT:-speed}" -microarch:"${JE_ARCH:-x86-64-v3}" \
 	-define:GL_DEBUG="${JE_GL_DEBUG:-false}" \
-	-define:JE_BUILD_ID="$(./build_id.sh windows)" \
+	-define:JE_BUILD_ID="$(python3 build_id.py windows)" \
 	-extra-linker-flags:"/libpath:$XWIN/crt/lib/x86_64 /libpath:$XWIN/sdk/lib/um/x86_64 /libpath:$XWIN/sdk/lib/ucrt/x86_64" \
 	"$@"
 
@@ -97,7 +97,7 @@ for d in avcodec-63 avformat-63 avutil-61 swresample-7 swscale-10; do
 done
 cp build/sdl3-win/LICENSE.txt build/win/LICENSE-SDL3.txt
 cp build/ffmpeg-win/LICENSE.txt build/win/LICENSE-FFmpeg.txt
-sed 's/$/\r/' play.bat > build/win/play.bat
+sed 's/\r*$/\r/' play.bat > build/win/play.bat
 
 # build/jade-win.zip: what a Windows PC needs, without jade.pdb. The game
 # files and the unpacked JadeEmpire.exe are never part of it.

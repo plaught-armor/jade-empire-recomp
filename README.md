@@ -8,8 +8,9 @@ two-player co-op, higher-resolution rendering and controller support.
 
 **This repository contains no game code or data.** You need your own copy of
 the game (the Steam release). The recompiled code is generated on your machine
-from your own `JadeEmpire.exe`; nothing from the game is shipped here or in a
-build.
+from your own `JadeEmpire.exe`; nothing from the game is shipped here. A
+build contains that recompiled game code, so there are no prebuilt releases:
+build it yourself, and do not share your build.
 
 **Only tested with the Steam release of Jade Empire: Special Edition.** The
 GOG, Origin/EA app and retail disc versions have not been tried; their exes
@@ -54,7 +55,8 @@ port/play.sh
 `port/build_windows.sh` cross-builds a Windows exe on Linux (needs clang-cl,
 lld-link and the Windows SDK splatted by [xwin](https://github.com/Jake-Shadle/xwin));
 it downloads the SDL3 and FFmpeg DLLs and zips everything as
-`port/build/jade-win.zip`. On Windows, put `jade.exe` and its DLLs in a folder
+`port/build/jade-win.zip`, for your own use only. There is no native Windows
+build script yet. On Windows, put `jade.exe` and its DLLs in a folder
 together with your unpacked `JadeEmpire.exe` and run `play.bat`; set `GAME` if
 the game is not in the default Steam folder.
 
@@ -64,8 +66,11 @@ On the title menu, pick **Online → Host Online Game**. The address to give
 your friend appears in the window title and on the clipboard; UDP port 47000
 is opened through UPnP when the router allows it, otherwise forward it by
 hand. The other player picks **Online → Join Online Game** and types or pastes
-that address. Both players must run the same build and the same game files;
-the joiner plays on the host's save and settings. See `docs/hle.md` §11.
+that address. Both players must run the same game files and a byte-identical
+port binary (the peers check), and the joiner plays on the host's save and
+settings. Two separate builds match only when made from the same commit with
+the same toolchain and `JE_ARCH` (for example `JE_ARCH=x86-64-v3`); this has
+not been verified across machines yet. See `docs/hle.md` §11.
 
 ## Documentation
 

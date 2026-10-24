@@ -1,0 +1,60 @@
+name: Online co-op problem
+description: Joining fails, the peers desync, or the connection drops.
+labels: [co-op]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Both players must run builds from the same commit with the same Odin
+        version, on the same OS (README.md, Online co-op). Do not attach game
+        files or builds of the port.
+  - type: input
+    id: commit
+    attributes:
+      label: Commit
+      description: Output of `git rev-parse --short HEAD` on each machine.
+    validations:
+      required: true
+  - type: input
+    id: build_id
+    attributes:
+      label: Build IDs
+      description: >-
+        Output of `port/build_id.sh linux` (or `windows`) on the host and on
+        the joiner. They must match.
+    validations:
+      required: true
+  - type: input
+    id: systems
+    attributes:
+      label: Systems
+      description: OS and CPU of the host and of the joiner.
+    validations:
+      required: true
+  - type: dropdown
+    id: network
+    attributes:
+      label: Network
+      options:
+        - Same machine
+        - Same LAN
+        - Internet, UPnP opened the port
+        - Internet, port forwarded by hand
+        - Internet, not sure
+    validations:
+      required: true
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened
+      description: >-
+        Where in the game it happened, and any message shown (window title,
+        menu text). For a desync, the frame number the log reports.
+    validations:
+      required: true
+  - type: textarea
+    id: logs
+    attributes:
+      label: Logs
+      description: The session logs from `port/logs/` on both machines, labelled host and joiner.
+      render: text

@@ -1,0 +1,54 @@
+name: Bug report
+description: A crash, a rendering or audio fault, or the game behaving differently from the original.
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Do not attach game files, the unpacked exe, the recompiled code in
+        `port/src/rec` or a build of the port: they contain the game's code
+        or data. Logs, screenshots and save files are fine.
+  - type: input
+    id: commit
+    attributes:
+      label: Commit
+      description: Output of `git rev-parse --short HEAD`.
+    validations:
+      required: true
+  - type: dropdown
+    id: os
+    attributes:
+      label: OS
+      options:
+        - Linux
+        - Windows (cross-built with build_windows.sh)
+    validations:
+      required: true
+  - type: input
+    id: system
+    attributes:
+      label: System
+      description: Distribution or Windows version, CPU and GPU with driver, and `odin version`.
+    validations:
+      required: true
+  - type: input
+    id: exe
+    attributes:
+      label: Game exe
+      description: >-
+        sha256 of the packed `JadeEmpire.exe` from the game folder. Only the
+        Steam release (0d25f18c…) is supported.
+    validations:
+      required: true
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened
+      description: What you did, what you expected and what happened instead.
+    validations:
+      required: true
+  - type: textarea
+    id: log
+    attributes:
+      label: Log
+      description: The session log from `port/logs/` (play.sh writes one per run).
+      render: text

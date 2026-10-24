@@ -4,6 +4,7 @@
 /*
 !/.gitignore
 !/LICENSE
+!/.github/
 !/README.md
 !/docs/
 !/tools/

@@ -144,7 +144,7 @@ get_bytes :: proc(b: ^[]u8, n: int) -> []u8 {
 
 @(private = "file")
 net_save_bad :: proc() -> ! {
-	net_fail("the host's list of its Save is malformed")
+	net_fail("the save list from the host is malformed")
 }
 
 // On the joining peer before boot: the host's manifest m into the mirror of
@@ -211,7 +211,7 @@ net_save_open :: proc(p: string, write: bool, disp: u32) {
 	what := fmt.tprintf("%s/%s", NET_SAVE_DIR, ns.entries[i].path)
 	data, sent := net_blob_fetch(u32(i) + 1, what, u32(min(ns.entries[i].size, i64(max(u32)))))
 	defer delete(data)
-	if i64(len(data)) != ns.entries[i].size {net_fail("the host sent %s at %d bytes, not %d", what, len(data), ns.entries[i].size)}
+	if i64(len(data)) != ns.entries[i].size {net_fail("%s from the host is %d bytes, not %d", what, len(data), ns.entries[i].size)}
 	if err := os.write_entire_file(p, data); err != nil {net_fail("cannot write %s: %v", p, err)}
 	fmt.eprintfln("net: fetched %s, %d bytes as %d", what, len(data), sent)
 }
@@ -291,7 +291,7 @@ net_save_inflate :: proc(data: []u8, raw: u32, what: string) -> []u8 {
 	out := make([]u8, raw)
 	n := zlib.uLongf(raw)
 	if zlib.uncompress(raw_data(out), &n, raw_data(data), zlib.uLong(len(data))) != zlib.OK || n != zlib.uLongf(raw) {
-		net_fail("the host's %s did not inflate", what)
+		net_fail("%s from the host does not unpack", what)
 	}
 	return out
 }

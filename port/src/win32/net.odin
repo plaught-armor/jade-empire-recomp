@@ -348,7 +348,7 @@ net_connect :: proc(port: string, addr: string, exe: string, settings: []i32, he
 	if net.set_blocking(nt.sock, false) != nil {net_fail("cannot make the socket non-blocking")}
 	if net_slot == 1 {
 		// A host that is not open answers once it boots, after its welcome.
-		m, _ := net_blob_fetch(NET_BLOB_MANIFEST, "list of its Save", NET_MANIFEST_MAX, NET_JOIN_WAIT)
+		m, _ := net_blob_fetch(NET_BLOB_MANIFEST, "the save list", NET_MANIFEST_MAX, NET_JOIN_WAIT)
 		net_save_join(m)
 		delete(m)
 		if nt.rejoin {
@@ -915,10 +915,10 @@ net_blob_fetch :: proc(id: u32, what: string, max_raw: u32, wait := NET_LOST) ->
 		}
 		net_recv()
 		if len(nt.blob) > have {moved = time.tick_now()}
-		if time.tick_since(moved) > wait {net_fail("the host did not send its %s", what)}
-		if nt.blob_known && nt.blob_size == 0 {net_fail("the host cannot send its %s", what)}
+		if time.tick_since(moved) > wait {net_fail("the host did not send %s", what)}
+		if nt.blob_known && nt.blob_size == 0 {net_fail("the host cannot send %s", what)}
 		if nt.blob_known && (nt.blob_raw > max_raw || u64(nt.blob_size) > u64(zlib.compressBound(zlib.uLong(nt.blob_raw)))) {
-			net_fail("the host sends its %s at %d bytes as %d, over %d", what, nt.blob_raw, nt.blob_size, max_raw)
+			net_fail("%s from the host is too big: %d bytes, %d packed (at most %d)", what, nt.blob_raw, nt.blob_size, max_raw)
 		}
 		time.sleep(200 * time.Microsecond)
 	}

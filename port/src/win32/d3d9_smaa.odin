@@ -156,16 +156,19 @@ smaa_pass :: proc(i: int, target: u32, inputs: [][2]u32) {
 }
 
 // Runs SSAO (only for scene, before the UI), SMAA, then CAS, each when on,
-// over the back buffer if they have not run this frame. None runs over a
-// movie: the frames are film, already upscaled, and CAS oversharpens them. The last pass writes to the multisampled twin when that is
-// live (every sample of a pixel gets the pixel's result), else to a work
-// texture copied back into the surface. Draws restore every
-// state touched here from render state (apply_raster), except the pipeline,
-// the VAO and the samplers, restored below.
+// over the back buffer if they have not run this frame. Over a movie only
+// CAS runs, at the movie settings: the frames are film, already upscaled,
+// and the game's sharpening level oversharpens them. The last pass writes to
+// the multisampled twin when that is live (every sample of a pixel gets the
+// pixel's result), else to a work texture copied back into the surface.
+// Draws restore every state touched here from render state (apply_raster),
+// except the pipeline, the VAO and the samplers, restored below.
 smaa_frame :: proc(scene: bool) {
-	cas := cas_on()
-	ao := scene && ssao_level != 0
-	if (!smaa_on && !cas && !ao) || smaa.done || backbuf == 0 || len(binks) > 0 {return}
+	movie := len(binks) > 0
+	cas := cas_on(movie)
+	ao := scene && ssao_level != 0 && !movie
+	aa := smaa_on && !movie
+	if (!aa && !cas && !ao) || smaa.done || backbuf == 0 {return}
 	smaa.done = true
 	if !smaa.ready {smaa_init()}
 	b := res_of(backbuf)
@@ -192,7 +195,7 @@ smaa_frame :: proc(scene: bool) {
 	}
 	ms_read(backbuf)
 	src, last := b.gl, twin ? m.tex : smaa.out
-	if smaa_on {
+	if aa {
 		smaa_pass(0, smaa.edges, {{b.gl, smaa.lin}})
 		smaa_pass(1, smaa.blend, {{smaa.edges, smaa.lin}, {smaa.area, smaa.lin}, {smaa.search, smaa.pt}})
 		// Before CAS the result goes to smaa.out; blend is free for CAS then.
@@ -201,14 +204,14 @@ smaa_frame :: proc(scene: bool) {
 	}
 	if cas {
 		if !twin {last = src == smaa.out ? smaa.blend : smaa.out}
-		k := cas_k()
+		k := cas_k(movie)
 		gl.ProgramUniform2f(smaa.ps[3], 0, k[0], k[1])
 		smaa_pass(3, last, {{src, smaa.pt}})
 	}
 	gl.NamedFramebufferTexture(smaa.fbo, gl.COLOR_ATTACHMENT0, 0, 0)
 	if twin {
 		m.dirty = true
-	} else if smaa_on || cas {
+	} else if aa || cas {
 		full := [4]i32{0, 0, w, h}
 		gl_blit({last, 0, -1}, res_img(backbuf), full, full, b.format, false)
 	}

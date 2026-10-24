@@ -121,13 +121,15 @@ decoder estimates it from the container duration, and the `.bik`'s count and
 frame rate are what drive the timing. The four shipped replacements decode
 to exactly the `.bik` counts (1, 417, 481 and 151 frames).
 `tools/upscale_movies.py <game dir> <realesrgan-ncnn-vulkan> [name ...]`
-makes them: Real-ESRGAN `realesrgan-x4plus` 4x on the GPU, Lanczos to
+makes them: Real-ESRGAN `realesr-animevideov3` 4x on the GPU, Lanczos to
 2560x1920 (4x the back buffer, the largest render scale), 10-bit AV1 by
-SVT-AV1 at CRF 20, and the original audio as FLAC. Of the models in the
-ncnn-vulkan release, x4plus removes Bink's block artifacts and restores fine
-detail; `realesr-animevideov3` is 3x faster but smears the prerendered
-footage. x4plus takes about 1 s per 800x600 frame on a Radeon RX 7900 XTX,
-and the game has 230 787 frames (60 137 at 640x480, 170 650 at 800x600).
+SVT-AV1 at CRF 20, and the original audio as FLAC. `realesrgan-x4plus`
+restores more fine detail but paints Bink's block artifacts into hard edges
+and looked oversharpened in play; animevideov3 is softer, and the port
+sharpens movies itself at a separate level (rendering.md §14). It runs at
+about 4.4 frames per second at 800x600 on a Radeon RX 7900 XTX (x4plus
+about 1), and the game has 230 787 frames (60 137 at 640x480, 170 650 at
+800x600), about 14.5 hours in all.
 
 ## §5 Gamepad
 

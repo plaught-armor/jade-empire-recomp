@@ -2,11 +2,14 @@
 // after SMAA, in the same chain (smaa_frame), before the UI is drawn. The
 // sharpening is AMD's contrast-adaptive sharpening (FidelityFX CAS, MIT) at
 // the image's own size; vibrance raises the saturation of muted colours more
-// than of saturated ones. WHY: docs/rendering.md §14
+// than of saturated ones. Movies have their own two settings
+// (JE_MOVIE_SHARPEN, JE_MOVIE_VIBRANCE). WHY: docs/rendering.md §14
 package win32
 
 cas_sharp: u32 // JE_SHARPEN; 0 = off, 1..3 = low, medium, high
 cas_vibrance: u32 // JE_VIBRANCE; 0 = off, 1..3 = low, medium, high
+cas_movie_sharp: u32 // JE_MOVIE_SHARPEN, the same levels while a movie plays
+cas_movie_vibrance: u32 // JE_MOVIE_VIBRANCE
 
 CAS_VS :: `#version 460 core
 out gl_PerVertex { vec4 gl_Position; };
@@ -49,16 +52,25 @@ void main() {
 CAS_SHARPNESS := [4]f32{0, 0, 0.5, 1}
 CAS_VIBRANCE := [4]f32{0, 0.15, 0.3, 0.5}
 
-cas_on :: proc() -> bool {
-	return cas_sharp != 0 || cas_vibrance != 0
+// The sharpening and vibrance levels in force, the movie ones while a movie
+// plays.
+cas_levels :: proc(movie: bool) -> (sharp, vibrance: u32) {
+	if movie {return cas_movie_sharp, cas_movie_vibrance}
+	return cas_sharp, cas_vibrance
+}
+
+cas_on :: proc(movie: bool) -> bool {
+	sharp, vibrance := cas_levels(movie)
+	return sharp != 0 || vibrance != 0
 }
 
 // The pass's uniform for the settings in force.
-cas_k :: proc() -> [2]f32 {
+cas_k :: proc(movie: bool) -> [2]f32 {
+	sharp, vibrance := cas_levels(movie)
 	peak := f32(0)
-	if cas_sharp != 0 {
-		t := CAS_SHARPNESS[min(cas_sharp, 3)]
+	if sharp != 0 {
+		t := CAS_SHARPNESS[min(sharp, 3)]
 		peak = -1 / (8 + (5 - 8) * t)
 	}
-	return {peak, CAS_VIBRANCE[min(cas_vibrance, 3)]}
+	return {peak, CAS_VIBRANCE[min(vibrance, 3)]}
 }

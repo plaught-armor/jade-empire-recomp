@@ -40,6 +40,8 @@ Setting_Id :: enum u8 {
 	Smaa,
 	Sharpen,
 	Vibrance,
+	Movie_Sharpen,
+	Movie_Vibrance,
 	Ssao,
 	Draw,
 	Soft,
@@ -113,6 +115,18 @@ SETTINGS := [Setting_Id]Setting {
 		"Richer muted colours. Off keeps the original colours.",
 		{{0, "Off"}, {1, "Low"}, {2, "Medium"}, {3, "High"}},
 		0,
+	},
+	.Movie_Sharpen = {
+		"MOVIE_SHARPEN", "Movie Sharpening",
+		"Contrast-adaptive sharpening of cinematics, in place of Sharpening.",
+		{{0, "Off"}, {1, "Low"}, {2, "Medium"}, {3, "High"}},
+		1,
+	},
+	.Movie_Vibrance = {
+		"MOVIE_VIBRANCE", "Movie Vibrance",
+		"Richer muted colours in cinematics, in place of Vibrance.",
+		{{0, "Off"}, {1, "Low"}, {2, "Medium"}, {3, "High"}},
+		1,
 	},
 	.Ssao = {
 		"SSAO", "Ambient Occlusion",
@@ -248,7 +262,7 @@ SETTINGS_SECTION :: "Port"
 SETTINGS_ROWS :: 0x00a00000
 VIDEO_ROWS_GAME :: 0x0075b868 // the game's table, nine strrefs
 VIDEO_ROWS_GAME_N :: 9
-VIDEO_ROWS_N :: 28
+VIDEO_ROWS_N :: 30
 CONTROL_FIRST :: Setting_Id.Turn
 VIDEO_N :: int(CONTROL_FIRST)
 CONTROL_N :: len(Setting_Id) - VIDEO_N
@@ -338,7 +352,7 @@ setting_set :: proc(key: string, v: i32) -> bool {
 
 // The settings that change the game rather than only its look: an online
 // game's joining peer takes the host's (win32/net_save.odin).
-SETTINGS_LOOK :: bit_set[Setting_Id]{.Fps, .Menu_Fps, .Scale, .Smaa, .Sharpen, .Vibrance, .Ssao, .Soft, .Ppl, .Bloom, .Shadow, .Aniso, .Fullscreen, .Reverb}
+SETTINGS_LOOK :: bit_set[Setting_Id]{.Fps, .Menu_Fps, .Scale, .Smaa, .Sharpen, .Vibrance, .Movie_Sharpen, .Movie_Vibrance, .Ssao, .Soft, .Ppl, .Bloom, .Shadow, .Aniso, .Fullscreen, .Reverb}
 
 // Every setting's value, in Setting_Id order, for the host to send.
 settings_vals :: proc() -> []i32 {
@@ -380,6 +394,10 @@ setting_apply :: proc(id: Setting_Id, boot: bool) {
 		win32.cas_sharp = u32(clamp(v, 0, 3))
 	case .Vibrance:
 		win32.cas_vibrance = u32(clamp(v, 0, 3))
+	case .Movie_Sharpen:
+		win32.cas_movie_sharp = u32(clamp(v, 0, 3))
+	case .Movie_Vibrance:
+		win32.cas_movie_vibrance = u32(clamp(v, 0, 3))
 	case .Ssao:
 		win32.ssao_level = u32(clamp(v, 0, 3))
 	case .Draw:

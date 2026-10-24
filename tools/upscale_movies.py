@@ -2,14 +2,15 @@
 """Upscale the game's Bink movies with Real-ESRGAN into HD replacements.
 
 Each movies/<name>.bik becomes movies_hd/<name>.mkv: every frame upscaled 4x
-by the realesrgan-x4plus model (realesrgan-ncnn-vulkan, on the GPU), scaled
+by the realesr-animevideov3 model (realesrgan-ncnn-vulkan, on the GPU), scaled
 with Lanczos to OUT_W x OUT_H, encoded as 10-bit AV1 (SVT-AV1), with the
 original audio as FLAC. The port's BinkOpen plays the .mkv in place of the
 .bik when it exists (port/src/win32/bink.odin, docs/hle.md §4).
 
 Frames go through PNG files in chunks of CHUNK, which bounds the scratch
-space to one chunk of 4x frames. A movie whose .mkv exists is skipped, so an
-interrupted run resumes at the movie it was on.
+space to one chunk of 4x frames. A movie whose .mkv exists is skipped, and
+the encoded chunks of an unfinished movie are kept, so an interrupted run
+resumes at the chunk it was on.
 
 Usage: upscale_movies.py <game dir> <realesrgan-ncnn-vulkan> [name ...]
 """
@@ -24,7 +25,8 @@ import time
 # 4x the 640x480 back buffer: the largest render scale (docs/rendering.md §1).
 OUT_W, OUT_H = 2560, 1920
 CHUNK = 500
-MODEL = "realesrgan-x4plus"
+# Softer than realesrgan-x4plus, which painted Bink blocks into hard edges.
+MODEL = "realesr-animevideov3"
 ENCODE = ["-c:v", "libsvtav1", "-preset", "5", "-crf", "20",
           "-pix_fmt", "yuv420p10le", "-color_primaries", "bt709",
           "-color_trc", "bt709", "-colorspace", "bt709", "-color_range", "tv"]
@@ -56,9 +58,11 @@ def encode_chunk(src, fps, first, seg):
 def upscale(bik, out, esr):
     fps, has_audio = probe(bik)
     work = out.parent / ".work" / bik.stem
-    if work.exists():
-        shutil.rmtree(work)
-    frames, up = work / "frames", work / "up"
+    frames, up, chunk = work / "frames", work / "up", work / "chunk"
+    # Finished segments survive an interrupted run; partial frame dirs do not.
+    for d in (frames, up, chunk):
+        if d.exists():
+            shutil.rmtree(d)
     frames.mkdir(parents=True)
     run(["ffmpeg", "-v", "error", "-i", str(bik), "-map", "0:v:0",
          "-fps_mode", "passthrough", "-start_number", "0",
@@ -66,22 +70,28 @@ def upscale(bik, out, esr):
     n = len(list(frames.iterdir()))
     assert n > 0, f"{bik}: no frames"
     segs = []
-    t0 = time.monotonic()
+    t0, ran = time.monotonic(), 0
     for first in range(0, n, CHUNK):
-        chunk = work / "chunk"
+        seg = work / f"seg{first // CHUNK:04d}.mkv"
+        segs.append(seg)
+        if seg.exists():
+            for k in range(first, min(first + CHUNK, n)):
+                (frames / f"{k:06d}.png").unlink()
+            continue
         chunk.mkdir()
         for k in range(first, min(first + CHUNK, n)):
             (frames / f"{k:06d}.png").rename(chunk / f"{k:06d}.png")
         up.mkdir()
         run([str(esr), "-i", str(chunk), "-o", str(up), "-n", MODEL,
              "-s", "4", "-f", "png"], cwd=esr.parent)  # models/ is found from cwd
-        seg = work / f"seg{first // CHUNK:04d}.mkv"
-        encode_chunk(up, fps, first, seg)
-        segs.append(seg)
+        part = seg.with_suffix(".part.mkv")
+        encode_chunk(up, fps, first, part)
+        part.rename(seg)
         shutil.rmtree(chunk)
         shutil.rmtree(up)
         done = min(first + CHUNK, n)
-        rate = done / (time.monotonic() - t0)
+        ran += done - first
+        rate = ran / (time.monotonic() - t0)
         print(f"  {bik.stem}: {done}/{n} frames, {rate:.2f} fps", flush=True)
     listing = work / "segs.txt"
     listing.write_text("".join(f"file '{s}'\n" for s in segs))

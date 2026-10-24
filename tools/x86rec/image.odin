@@ -31,12 +31,12 @@ PATCHES := [?]Patch {
 	{0x668521, "79e6", "0000"}, {0x668527, "8719", "0000"},
 	{0x66856d, "79e6", "0000"}, {0x668574, "8719", "0000"},
 	// CPanelCustomVideo's row label strrefs, nine at 0x75b868, are read from
-	// the port's table at 0x00a00000 instead, 28 rows: the game's nine, then
+	// the port's table at 0x00a00000 instead, 30 rows: the game's nine, then
 	// the port's video settings (port/src/native/settings.odin, VIDEO_ROWS_N).
 	{0x54ee97, "8b14bd68b87500", "8b14bd0000a000"},
 	{0x54d4b0, "3b0c8568b87500", "3b0c850000a000"},
 	{0x54d849, "3b04ad68b87500", "3b04ad0000a000"},
-	{0x54d4bc, "83f809", "83f81c"}, {0x54f293, "83ff09", "83ff1c"},
+	{0x54d4bc, "83f809", "83f81e"}, {0x54f293, "83ff09", "83ff1e"},
 	// The selection handler gives rows 5 to 7 the value arrows, not row 8
 	// (Brightness, a slider): cmp edi,7; jne becomes cmp edi,8; je, so the
 	// port's rows get them too.

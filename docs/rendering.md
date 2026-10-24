@@ -534,7 +534,9 @@ stretched sideways. `native/widegui.odin` fixes it when W·3 > H·4
 ## §14 Sharpening and vibrance
 
 `port/src/win32/d3d9_cas.odin`, settings SHARPEN (Off, Low, Medium, High;
-default Low) and VIBRANCE (Off, Low, Medium, High; default Off). One
+default Low) and VIBRANCE (Off, Low, Medium, High; default Off), and
+MOVIE_SHARPEN and MOVIE_VIBRANCE (same levels, both default Low) in their
+place while a movie plays. One
 full-screen pass in the SMAA chain (`smaa_frame`, §9), after SMAA when that
 is on, so it also runs before the UI and leaves the text alone.
 
@@ -550,9 +552,11 @@ is on, so it also runs before the UI and leaves the text alone.
   multisampled twin or the free blend texture; with SMAA off it reads the
   back buffer itself. It runs at the back buffer's GL size, so at render
   scale above 1 the sharpening is partly lost in the downscale.
-- The whole chain (SSAO, SMAA, CAS) is skipped while a Bink movie is open.
-  The movies_hd replacements are already upscaled by a photo model; CAS on
-  top made them look oversharpened, and SMAA has nothing to do on film.
+- While a Bink movie is open only CAS runs, at the movie levels; SSAO and
+  SMAA have nothing to do on film. The movies_hd replacements are already
+  upscaled (realesr-animevideov3); the scene's level on top of the photo
+  model x4plus looked oversharpened, so movies have their own. The pass
+  runs over the whole frame, so text drawn over a movie is filtered too.
 
 ## §15 Ambient occlusion
 

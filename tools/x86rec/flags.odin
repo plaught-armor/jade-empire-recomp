@@ -1,6 +1,7 @@
 #+feature dynamic-literals
 package x86rec
 
+import cs "../capstone"
 import "core:fmt"
 import "core:slice"
 import "core:strings"
@@ -56,7 +57,7 @@ mnem_base :: proc(m: string) -> string {
 shift_count :: proc(i: ^Insn) -> (int, bool) {
 	if i.nops <= 1 do return 1, true
 	op := &i.ops[1]
-	if op.type == OP_IMM do return int(op.imm & 31), true
+	if op.type == cs.OP_IMM do return int(op.imm & 31), true
 	return 0, false
 }
 
@@ -82,7 +83,7 @@ flag_effect :: proc(i: ^Insn) -> (u8, u8) {
 		n: int
 		ok: bool
 		if base == "shld" || base == "shrd" {
-			if i.ops[2].type == OP_IMM do n, ok = int(i.ops[2].imm & 31), true
+			if i.ops[2].type == cs.OP_IMM do n, ok = int(i.ops[2].imm & 31), true
 		} else {
 			n, ok = shift_count(i)
 		}

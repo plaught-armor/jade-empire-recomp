@@ -1,5 +1,6 @@
 package x86rec
 
+import cs "../capstone"
 import "core:fmt"
 import "core:os"
 import "core:slice"
@@ -347,9 +348,9 @@ call_expr :: proc(em: ^Emitter, t: u32) -> string {
 	return fmt.aprintf("x86.call_ext(%s)", hexu(t))
 }
 
-target_value :: proc(L: ^Lift, op: ^Cs_Op) -> string {
-	if op.type == OP_REG do return lift_read(L, op)
-	if op.type == OP_MEM do return fmt.aprintf("x86.rd32(%s)", lift_ea(L, op))
+target_value :: proc(L: ^Lift, op: ^cs.Op) -> string {
+	if op.type == cs.OP_REG do return lift_read(L, op)
+	if op.type == cs.OP_MEM do return fmt.aprintf("x86.rd32(%s)", lift_ea(L, op))
 	unsupported(L, "indirect")
 	return ""
 }
@@ -860,7 +861,7 @@ structure :: proc(f: ^Func, cases_in: []Case) -> ([]string, bool) {
 }
 
 // Proc names keep the entry address, so they stay unique and greppable; a
-// function tools/funcnames.py names is prefixed with that name.
+// function tools/funcnames names is prefixed with that name.
 // WHY: docs/exe_inventory.md §8
 proc_name :: proc(f: ^Func, e: u32, names: map[u32]string) -> string {
 	if n, ok := names[e]; ok do return fmt.aprintf("%s_%08x", n, e)

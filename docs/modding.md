@@ -126,7 +126,7 @@ Read these before disassembling; area scripts in the RIMs have no source.
 
 **Engine functions.** `re/nwscript_functions.tsv` lists id, name, return and
 parameter types and trailing defaults; the table came from xoreos and every id
-was checked against calls in shipped `override/*.ncs`. `tools/cmdtable.py`
+was checked against calls in shipped `override/*.ncs`. `tools/cmdtable`
 recovers the action id → handler address table from the binary
 (`re/nwscript_handlers.tsv`). Ids with no handler exist in the table: a script
 calling one fails at run time.

@@ -2,6 +2,7 @@ package x86rec
 
 // Odin statements for one instruction (docs/recompiler.md).
 
+import cs "../capstone"
 import "core:fmt"
 import "core:strings"
 
@@ -137,7 +138,7 @@ lift_reg :: proc(r: u32) -> string {
 
 // Literal of immediate op; scaled by x86.frames when the instruction is in
 // FRAME_COUNTS.
-lift_imm :: proc(L: ^Lift, op: ^Cs_Op, size: int) -> string {
+lift_imm :: proc(L: ^Lift, op: ^cs.Op, size: int) -> string {
 	if is_frame_count(L.i.address) {
 		L.frame_count = true
 		return fmt.aprintf("x86.frames(%s)", lit(op.imm, size))
@@ -153,7 +154,7 @@ lift_r32 :: proc(L: ^Lift, name: string) -> string {
 	return strings.concatenate({"c.", name})
 }
 
-lift_ea :: proc(L: ^Lift, op: ^Cs_Op) -> string {
+lift_ea :: proc(L: ^Lift, op: ^cs.Op) -> string {
 	parts: [dynamic]string
 	if op.segment != 0 {
 		seg := lift_reg(op.segment)
@@ -177,10 +178,10 @@ lift_ea :: proc(L: ^Lift, op: ^Cs_Op) -> string {
 	return e
 }
 
-lift_read :: proc(L: ^Lift, op: ^Cs_Op, ea := "") -> string {
+lift_read :: proc(L: ^Lift, op: ^cs.Op, ea := "") -> string {
 	size := int(op.size)
 	switch op.type {
-	case OP_REG:
+	case cs.OP_REG:
 		n := lift_reg(op.reg)
 		if is_r32(n) do return strings.concatenate({"c.", n})
 		if r := r16_of(n); r != "" do return fmt.aprintf("u16(c.%s)", r)
@@ -188,18 +189,18 @@ lift_read :: proc(L: ^Lift, op: ^Cs_Op, ea := "") -> string {
 		if r := r8h_of(n); r != "" do return fmt.aprintf("u8(c.%s >> 8)", r)
 		unsupported(L, strings.concatenate({"reg ", n}))
 		return ""
-	case OP_IMM:
+	case cs.OP_IMM:
 		return lift_imm(L, op, size)
-	case OP_MEM:
+	case cs.OP_MEM:
 		return fmt.aprintf("x86.rd%d(%s)", size * 8, ea != "" ? ea : lift_ea(L, op))
 	}
 	unsupported(L, "operand")
 	return ""
 }
 
-lift_write :: proc(L: ^Lift, op: ^Cs_Op, val: string, ea := "") -> string {
+lift_write :: proc(L: ^Lift, op: ^cs.Op, val: string, ea := "") -> string {
 	switch op.type {
-	case OP_REG:
+	case cs.OP_REG:
 		n := lift_reg(op.reg)
 		if is_r32(n) do return fmt.aprintf("c.%s = %s", n, val)
 		if r := r16_of(n); r != "" do return fmt.aprintf("c.%s = (c.%s & 0xffff0000) | u32(%s)", r, r, val)
@@ -207,7 +208,7 @@ lift_write :: proc(L: ^Lift, op: ^Cs_Op, val: string, ea := "") -> string {
 		if r := r8h_of(n); r != "" do return fmt.aprintf("c.%s = (c.%s & 0xffff00ff) | (u32(%s) << 8)", r, r, val)
 		unsupported(L, strings.concatenate({"reg ", n}))
 		return ""
-	case OP_MEM:
+	case cs.OP_MEM:
 		return fmt.aprintf("x86.wr%d(%s, %s)", int(op.size) * 8, ea != "" ? ea : lift_ea(L, op), val)
 	}
 	unsupported(L, "write operand")
@@ -216,8 +217,8 @@ lift_write :: proc(L: ^Lift, op: ^Cs_Op, val: string, ea := "") -> string {
 
 // The read expression of a read-modify-write operand and the EA its write
 // uses; a memory operand's EA is computed once into `ea`.
-lift_rmw :: proc(L: ^Lift, op: ^Cs_Op) -> (string, string) {
-	if op.type == OP_MEM {
+lift_rmw :: proc(L: ^Lift, op: ^cs.Op) -> (string, string) {
+	if op.type == cs.OP_MEM {
 		emitf(L, "ea := u32(%s)", lift_ea(L, op))
 		return lift_read(L, op, "ea"), "ea"
 	}
@@ -506,7 +507,7 @@ lift_x87 :: proc(L: ^Lift) {
 	ea := ""
 	if mem {
 		for j in 0 ..< int(ins.nops) {
-			if ins.ops[j].type == OP_MEM {
+			if ins.ops[j].type == cs.OP_MEM {
 				ea = lift_ea(L, &ins.ops[j])
 				break
 			}
@@ -745,7 +746,7 @@ is_sse :: proc(L: ^Lift) -> bool {
 	if ins.mnemonic == "stmxcsr" || ins.mnemonic == "ldmxcsr" do return true
 	for j in 0 ..< int(ins.nops) {
 		op := &ins.ops[j]
-		if op.type == OP_REG {
+		if op.type == cs.OP_REG {
 			n := lift_reg(op.reg)
 			if strings.has_prefix(n, "xmm") do return true
 			if strings.has_prefix(n, "mm") {
@@ -757,20 +758,20 @@ is_sse :: proc(L: ^Lift) -> bool {
 	return false
 }
 
-xr :: proc(op: ^Cs_Op) -> string {
+xr :: proc(op: ^cs.Op) -> string {
 	return fmt.aprintf("c.xmm[%s]", lift_reg(op.reg)[3:])
 }
 
-isx :: proc(op: ^Cs_Op) -> bool {
-	return op != nil && op.type == OP_REG && strings.has_prefix(lift_reg(op.reg), "xmm")
+isx :: proc(op: ^cs.Op) -> bool {
+	return op != nil && op.type == cs.OP_REG && strings.has_prefix(lift_reg(op.reg), "xmm")
 }
 
-v128 :: proc(L: ^Lift, op: ^Cs_Op) -> string {
+v128 :: proc(L: ^Lift, op: ^cs.Op) -> string {
 	return isx(op) ? xr(op) : fmt.aprintf("x86.rd128(%s)", lift_ea(L, op))
 }
 
 // Scalar lane k of an xmm, or a scalar memory operand.
-lane :: proc(L: ^Lift, op: ^Cs_Op, field: string, k := 0) -> string {
+lane :: proc(L: ^Lift, op: ^cs.Op, field: string, k := 0) -> string {
 	if isx(op) do return fmt.aprintf("%s.%s[%d]", xr(op), field, k)
 	switch field {
 	case "f": return fmt.aprintf("transmute(f32)x86.rd32(%s)", lift_ea(L, op))
@@ -780,7 +781,7 @@ lane :: proc(L: ^Lift, op: ^Cs_Op, field: string, k := 0) -> string {
 	return fmt.aprintf("x86.rd32(%s)", lift_ea(L, op))
 }
 
-store_lane :: proc(L: ^Lift, op: ^Cs_Op, field, val: string) {
+store_lane :: proc(L: ^Lift, op: ^cs.Op, field, val: string) {
 	if isx(op) {
 		emitf(L, "%s.%s[0] = %s", xr(op), field, val)
 		return
@@ -885,7 +886,7 @@ lift_sse :: proc(L: ^Lift) {
 		}
 		emit(L, "}")
 	case m == "pinsrw":
-		src := a.type == OP_REG ? lift_read(L, a) : fmt.aprintf("x86.rd16(%s)", lift_ea(L, a))
+		src := a.type == cs.OP_REG ? lift_read(L, a) : fmt.aprintf("x86.rd16(%s)", lift_ea(L, a))
 		emitf(L, "%s.w[%d] = u16(%s)", xr(d), ins.ops[2].imm & 7, src)
 	case m == "rsqrtss":
 		emitf(L, "%s.f[0] = x86.rsqrt(%s)", xr(d), lane(L, a, "f"))
@@ -935,7 +936,7 @@ lift_sse :: proc(L: ^Lift) {
 		emit(L, lift_write(L, d, fmt.aprintf("u32(%s.w[%d])", xr(a), ins.ops[2].imm & 7)))
 	case m == "psllq" || m == "psrlq":
 		fn := m == "psllq" ? "x86.shl64" : "x86.shr64"
-		cnt := a.type == OP_IMM ? fmt.aprintf("%d", a.imm & 0xFF) : fmt.aprintf("u32(min(%s.q[0], 64))", v128(L, a))
+		cnt := a.type == cs.OP_IMM ? fmt.aprintf("%d", a.imm & 0xFF) : fmt.aprintf("u32(min(%s.q[0], 64))", v128(L, a))
 		emitf(L, "{{ n := u32(%s)", cnt)
 		for k in 0 ..< 2 do emitf(L, "%s.q[%d] = %s(%s.q[%d], n)", xr(d), k, fn, xr(d), k)
 		emit(L, "}")
@@ -1021,7 +1022,7 @@ lift_body :: proc(L: ^Lift) {
 		e := lift_ea(L, &ops[1])
 		emit(L, lift_write(L, &ops[0], ops[0].size == 4 ? e : fmt.aprintf("u16(%s)", e)))
 	case base == "push":
-		imm := ops[0].type == OP_IMM
+		imm := ops[0].type == cs.OP_IMM
 		sz := imm ? 4 : int(ops[0].size)
 		v := imm ? lit(ops[0].imm, 4) : lift_read(L, &ops[0])
 		emitf(L, "v := %s", v)
@@ -1047,7 +1048,7 @@ lift_body :: proc(L: ^Lift) {
 		T := size_t(size)
 		a, wa := lift_rmw(L, &ops[0])
 		emitf(L, "a := %s", a)
-		emitf(L, "b := %s", ops[1].type != OP_IMM ? lift_read(L, &ops[1]) : lift_imm(L, &ops[1], size))
+		emitf(L, "b := %s", ops[1].type != cs.OP_IMM ? lift_read(L, &ops[1]) : lift_imm(L, &ops[1], size))
 		if base == "adc" || base == "sbb" {
 			emit(L, "cin := c.cf")
 			o := base == "adc" ? "+" : "-"
@@ -1062,12 +1063,12 @@ lift_body :: proc(L: ^Lift) {
 		flags_arith(&L.s, kind, size, "a", "b", "r", lv, "cin")
 	case in_strs(base, "and", "or", "xor", "test"):
 		size := int(ops[0].size)
-		if base == "xor" && ops[1].type == OP_REG && ops[0].type == OP_REG && ops[0].reg == ops[1].reg {
+		if base == "xor" && ops[1].type == cs.OP_REG && ops[0].type == cs.OP_REG && ops[0].reg == ops[1].reg {
 			emit(L, lift_write(L, &ops[0], lit(0, size)))
 			emitf(L, "r := %s", lit(0, size))
 		} else {
 			a, wa := lift_rmw(L, &ops[0])
-			b := ops[1].type != OP_IMM ? lift_read(L, &ops[1]) : lit(ops[1].imm, size)
+			b := ops[1].type != cs.OP_IMM ? lift_read(L, &ops[1]) : lit(ops[1].imm, size)
 			o: string
 			switch base {
 			case "and", "test": o = "&"
@@ -1137,7 +1138,7 @@ lift_body :: proc(L: ^Lift) {
 		a, wa := lift_rmw(L, &ops[0])
 		emitf(L, "a := %s", a)
 		emitf(L, "b := %s", lift_read(L, &ops[1]))
-		emit(L, ops[2].type == OP_IMM ? fmt.aprintf("n := u32(%d)", ops[2].imm & 31) : "n := c.ecx & 31")
+		emit(L, ops[2].type == cs.OP_IMM ? fmt.aprintf("n := u32(%d)", ops[2].imm & 31) : "n := c.ecx & 31")
 		emit(L, "if n != 0 {")
 		if base == "shld" {
 			emit(L, "r := (a << n) | (b >> (32 - n))")
@@ -1178,8 +1179,8 @@ lift_body :: proc(L: ^Lift) {
 			st := stype(size)
 			// Immediates as signed literals: a u32 constant above
 			// 0x7fffffff cannot be cast to i32 at compile time.
-			sval :: proc(L: ^Lift, op: ^Cs_Op, size: int, st: string) -> string {
-				if op.type == OP_IMM {
+			sval :: proc(L: ^Lift, op: ^cs.Op, size: int, st: string) -> string {
+				if op.type == cs.OP_IMM {
 					bits := uint(8 * size)
 					v := op.imm & ((i64(1) << bits) - 1)
 					if v >= i64(1) << (bits - 1) do v -= i64(1) << bits
@@ -1268,7 +1269,7 @@ lift_body :: proc(L: ^Lift) {
 		emit(L, "x86.cpuid()")
 	case in_strs(base, "bt", "bts", "btr", "btc"):
 		op: string
-		if ops[0].type != OP_REG && ops[1].type != OP_IMM {
+		if ops[0].type != cs.OP_REG && ops[1].type != cs.OP_IMM {
 			// Memory form with a register offset: signed bit index, so the
 			// word addressed is ea + (offset >> 5) * 4.
 			if ops[0].size != 4 {
@@ -1290,7 +1291,7 @@ lift_body :: proc(L: ^Lift) {
 		a, wa := lift_rmw(L, &ops[0])
 		bits := int(ops[0].size) * 8
 		emitf(L, "a := %s", a)
-		emitf(L, "n := u32(%s) & %d", ops[1].type != OP_IMM ? lift_read(L, &ops[1]) : fmt.aprintf("%d", ops[1].imm), bits - 1)
+		emitf(L, "n := u32(%s) & %d", ops[1].type != cs.OP_IMM ? lift_read(L, &ops[1]) : fmt.aprintf("%d", ops[1].imm), bits - 1)
 		emit(L, "c.cf = (a >> n) & 1 != 0")
 		switch base {
 		case "bts": op = "a | (1 << n)"
@@ -1300,7 +1301,7 @@ lift_body :: proc(L: ^Lift) {
 		if base != "bt" do emit(L, lift_write(L, &ops[0], op, wa))
 	case base == "xlatb":
 		emit(L, "c.eax = (c.eax & 0xffffff00) | u32(x86.rd8(c.ebx + (c.eax & 0xff)))")
-	case in_strs(base, "movsb", "movsw", "movsd", "stosb", "stosw", "stosd", "lodsb", "lodsw", "lodsd", "cmpsb", "cmpsw", "cmpsd", "scasb", "scasw", "scasd") && (len(ops) == 0 || ops[0].type == OP_MEM || strings.has_prefix(base, "lods") || strings.has_prefix(base, "scas") || strings.has_prefix(base, "stos")):
+	case in_strs(base, "movsb", "movsw", "movsd", "stosb", "stosw", "stosd", "lodsb", "lodsw", "lodsd", "cmpsb", "cmpsw", "cmpsd", "scasb", "scasw", "scasd") && (len(ops) == 0 || ops[0].type == cs.OP_MEM || strings.has_prefix(base, "lods") || strings.has_prefix(base, "scas") || strings.has_prefix(base, "stos")):
 		size := base[len(base) - 1] == 'b' ? 1 : base[len(base) - 1] == 'w' ? 2 : 4
 		fn := base[:len(base) - 1]
 		mode: string

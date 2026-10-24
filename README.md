@@ -40,9 +40,9 @@ repository root (a symlink is fine) and the unpacked exe at
 # 1. Unpack the PECompact2-packed exe (docs/unpack.md).
 python3 tools/unpack_pec2.py "steamapps/common/Jade Empire/JadeEmpire.exe" unpacked/JadeEmpire.exe
 
-# 2. Build the recompiler (tools/x86rec/build.bat on Windows) and generate
+# 2. Build the recompiler and tools (tools/build.bat on Windows) and generate
 #    the recompiled code into port/src/rec (about 10 seconds).
-tools/x86rec/build.sh
+tools/build.sh
 port/build/x86rec unpacked/JadeEmpire.exe re/ghidra_funcs.txt port/src/rec
 
 # 3. Build (about 45 seconds) and run.

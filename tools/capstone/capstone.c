@@ -1,5 +1,5 @@
 // A flat view of one capstone x86 instruction for the Odin side
-// (capstone.odin), so Odin binds four calls instead of capstone's nested
+// (capstone.odin), so Odin binds three calls instead of capstone's nested
 // unions. The operand fields are copied straight out of the C union, as
 // Python's capstone binding reads them.
 #include <stdint.h>
@@ -18,12 +18,13 @@ typedef struct {
 typedef struct {
 	uint32_t address;
 	uint16_t size;
-	uint8_t op_count, n_read, n_write;
+	uint8_t op_count, n_read, n_write, n_groups;
 	uint8_t bytes[16];
 	char mnemonic[32];
 	char op_str[160];
 	je_op ops[8];
 	uint16_t read[64], write[64];
+	uint8_t groups[8];
 } je_insn;
 
 static csh handle;
@@ -53,6 +54,8 @@ int je_cs_decode(const uint8_t *code, size_t len, uint64_t addr, je_insn *out) {
 	memcpy(out->mnemonic, i->mnemonic, sizeof out->mnemonic);
 	memcpy(out->op_str, i->op_str, sizeof out->op_str);
 	out->op_count = x->op_count;
+	out->n_groups = i->detail->groups_count < 8 ? i->detail->groups_count : 8;
+	memcpy(out->groups, i->detail->groups, out->n_groups);
 	for (int k = 0; k < x->op_count; k++) {
 		cs_x86_op *o = &x->operands[k];
 		je_op *d = &out->ops[k];

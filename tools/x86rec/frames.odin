@@ -5,6 +5,7 @@ package x86rec
 // it. An abstract interpretation per entry follows each entry value through
 // registers and stack slots at known esp offsets. WHY: docs/recompiler.md §2
 
+import cs "../capstone"
 import "core:fmt"
 import "core:mem"
 import vmem "core:mem/virtual"
@@ -83,8 +84,8 @@ State :: struct {
 }
 
 // R32 index of a 32-bit register operand, or -1.
-reg_index :: proc(op: ^Cs_Op) -> int {
-	if op.type != OP_REG do return -1
+reg_index :: proc(op: ^cs.Op) -> int {
+	if op.type != cs.OP_REG do return -1
 	n := reg_names[op.reg]
 	for r, k in R32 do if r == n do return k
 	return -1
@@ -121,7 +122,7 @@ esp_step :: proc(i: ^Insn) -> Step {
 	if m == "leave" do return {kind = .Leave}
 	if i.mod & (1 << ESP) == 0 do return {.Delta, 0, 0}
 	if len(ops) == 0 || reg_index(&ops[0]) != ESP do return {}
-	if (m == "add" || m == "sub") && ops[1].type == OP_IMM {
+	if (m == "add" || m == "sub") && ops[1].type == cs.OP_IMM {
 		return {.Delta, 0, s32(ops[1].imm) * (m == "add" ? 1 : -1)}
 	}
 	if m == "mov" && reg_index(&ops[1]) >= 0 do return {.Reg, reg_index(&ops[1]), 0}
@@ -442,10 +443,10 @@ ret_pops :: proc() -> []Off {
 
 // IAT slot a call operand reaches when host_pops() knows it, else 0:
 // `call [slot]`, or `call r` with r loaded from one.
-host_slot :: proc(op: ^Cs_Op, o: Off, regs: ^[8]Val) -> u32 {
+host_slot :: proc(op: ^cs.Op, o: Off, regs: ^[8]Val) -> u32 {
 	a: u32
 	ok := false
-	if op.type == OP_MEM {
+	if op.type == cs.OP_MEM {
 		if op.base == 0 && op.index == 0 && op.segment == 0 do a, ok = u32(op.disp & 0xFFFFFFFF), true
 	} else {
 		k := reg_index(op)
@@ -474,7 +475,7 @@ word :: proc(regs: ^[8]Val, o: Off, k: int) -> Val {
 }
 
 // Stack offset a memory operand addresses, or unknown.
-mem_slot :: proc(op: ^Cs_Op, o: Off, regs: ^[8]Val) -> Off {
+mem_slot :: proc(op: ^cs.Op, o: Off, regs: ^[8]Val) -> Off {
 	if op.index != 0 || op.segment != 0 || op.base == 0 do return NO_OFF
 	v := word(regs, o, r32_of(op.base))
 	return v.k == .S ? off(v.x + s32(op.disp)) : NO_OFF
@@ -552,8 +553,8 @@ clone_slots :: proc(s: []Slot) -> [dynamic]Slot {
 }
 
 // A dword memory operand at a constant address.
-absolute :: proc(op: ^Cs_Op) -> bool {
-	return op.type == OP_MEM && op.size == 4 && op.base == 0 && op.index == 0 && op.segment == 0
+absolute :: proc(op: ^cs.Op) -> bool {
+	return op.type == cs.OP_MEM && op.size == 4 && op.base == 0 && op.index == 0 && op.segment == 0
 }
 
 Stepped :: struct {
@@ -574,7 +575,7 @@ step_plain :: proc(i: ^Insn, o: Off, regs: ^[8]Val, slots0: []Slot) -> Stepped {
 	slots := clone_slots(slots0)
 	dst := len(ops) > 0 ? reg_index(&ops[0]) : -1
 	src := len(ops) > 0 && (m == "push" || m == "mov") ? reg_index(&ops[len(ops) - 1]) : -1
-	to_slot := len(ops) > 0 && ops[0].type == OP_MEM ? mem_slot(&ops[0], o, regs) : NO_OFF
+	to_slot := len(ops) > 0 && ops[0].type == cs.OP_MEM ? mem_slot(&ops[0], o, regs) : NO_OFF
 	if src >= 0 && !(m == "push" && o.ok || m == "mov" && (dst >= 0 || to_slot.ok)) {
 		src = -1 // stores an entry value where it is not followed
 	}
@@ -584,7 +585,7 @@ step_plain :: proc(i: ^Insn, o: Off, regs: ^[8]Val, slots0: []Slot) -> Stepped {
 	}
 	loaded := NONE
 	for &op in ops {
-		if op.type != OP_MEM || m == "lea" || op.access & AC_READ == 0 do continue
+		if op.type != cs.OP_MEM || m == "lea" || op.access & cs.AC_READ == 0 do continue
 		a := mem_slot(&op, o, regs)
 		if !a.ok do continue
 		hit: u32
@@ -618,7 +619,7 @@ step_plain :: proc(i: ^Insn, o: Off, regs: ^[8]Val, slots0: []Slot) -> Stepped {
 			if v.k == .C do o2 = off(o.v + s32(v.x) * (m == "add" ? 1 : -1)) // `sub esp, eax` with eax known
 		}
 	}
-	if m == "mov" && dst >= 0 && ops[1].type == OP_IMM {
+	if m == "mov" && dst >= 0 && ops[1].type == cs.OP_IMM {
 		new[dst] = {.C, ops[1].imm & 0xFFFFFFFF, 0}
 	} else if m == "mov" && dst >= 0 && src < 0 && absolute(&ops[1]) {
 		new[dst] = {.M, ops[1].disp & 0xFFFFFFFF, 0} // host_slot() resolves IAT loads
@@ -631,7 +632,7 @@ step_plain :: proc(i: ^Insn, o: Off, regs: ^[8]Val, slots0: []Slot) -> Stepped {
 		new[dst] = o.ok ? slots_get(slots[:], o.v) : Val{.None, 0, all_taint(slots[:])}
 	}
 	for &op in ops {
-		if op.type != OP_MEM || op.access & AC_WRITE == 0 do continue
+		if op.type != cs.OP_MEM || op.access & cs.AC_WRITE == 0 do continue
 		if m == "pop" {
 			leak |= all_taint(slots[:])
 			clear(&slots)
@@ -642,7 +643,7 @@ step_plain :: proc(i: ^Insn, o: Off, regs: ^[8]Val, slots0: []Slot) -> Stepped {
 	if m == "mov" && to_slot.ok && src >= 0 do slots_set(&slots, to_slot.v, word(regs, o, src))
 	if (m == "push" || m == "pushfd" || m == "pushal" || m == "pushad") && o.ok {
 		drop_slots(&slots, o.v + st.d, -st.d)
-		if m == "push" && ops[0].size == 4 && ops[0].type == OP_IMM {
+		if m == "push" && ops[0].size == 4 && ops[0].type == cs.OP_IMM {
 			slots_set(&slots, o.v - 4, Val{.C, ops[0].imm & 0xFFFFFFFF, 0})
 		} else if m == "push" && ops[0].size == 4 {
 			slots_set(&slots, o.v - 4, src >= 0 ? word(regs, o, src) : loaded)

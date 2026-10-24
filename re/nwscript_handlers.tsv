@@ -1,4 +1,4 @@
-# action id -> handler, from FUN_004a0e50 (tools/cmdtable.py)
+# action id -> handler, from FUN_004a0e50 (tools/cmdtable)
 id	handler
 0	0x490cc0
 1	0x490ab0

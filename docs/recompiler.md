@@ -1,7 +1,7 @@
 # x86 → Odin static recompiler
 
-Generator: `tools/x86rec/` (Odin), built by `tools/x86rec/build.sh` (or
-`build.bat`) as `port/build/x86rec`, run as
+Generator: `tools/x86rec/` (Odin), built by `tools/build.sh` (or
+`tools/build.bat`) as `port/build/x86rec`, run as
 `port/build/x86rec <JadeEmpire.exe> <re/ghidra_funcs.txt> port/src/rec`. It
 decodes with capstone 5.0.7, which the build script compiles from the pinned
 source tarball. Output: `port/src/rec/mNN/code.odin`, about 40 000

@@ -1,9 +1,9 @@
 package x86rec
 
-import "core:encoding/endian"
+import cs "../capstone"
+import "../pe"
 import "core:encoding/hex"
 import "core:fmt"
-import "core:os"
 import "core:strings"
 
 TEXT_LO :: 0x401000
@@ -86,18 +86,11 @@ Insn :: struct {
 	bytes:          [16]u8,
 	mnemonic:       string,
 	op_str:         string,
-	ops:            [4]Cs_Op,
+	ops:            [4]cs.Op,
 }
 
-// The mapped exe: headers and section raw data at their virtual addresses,
-// as pefile's get_memory_mapped_image lays them out.
-Image :: struct {
-	base: u32,
-	data: []u8,
-	iat:  map[u32]string, // IAT slot -> dll!name
-}
-
-img: Image
+// The mapped exe, PATCHES applied.
+img: pe.Image
 
 // Decoded instructions by pc - TEXT_LO: 0 undecoded, -1 no instruction,
 // else 1 + an index into the pool. The pool grows by chunks that never
@@ -110,46 +103,9 @@ mnemonics: map[string]string
 // capstone register names by id; "" for none.
 reg_names: [256]string
 
-le32 :: proc(b: []u8, o: int) -> u32 {
-	v, ok := endian.get_u32(b[o:], .Little)
-	assert(ok)
-	return v
-}
-
-le16 :: proc(b: []u8, o: int) -> u16 {
-	v, ok := endian.get_u16(b[o:], .Little)
-	assert(ok)
-	return v
-}
-
-cstr_at :: proc(b: []u8, o: int) -> string {
-	n := 0
-	for b[o + n] != 0 do n += 1
-	return string(b[o:o + n])
-}
-
 image_load :: proc(path: string) {
-	file, err := os.read_entire_file(path, context.allocator)
-	fmt.assertf(err == nil, "cannot read %s: %v", path, err)
-	pe := int(le32(file, 0x3c))
-	assert(le32(file, pe) == 0x4550, "not a PE file")
-	nsec := int(le16(file, pe + 6))
-	opt := pe + 24
-	img.base = le32(file, opt + 28)
-	hdrs := int(le32(file, opt + 60))
-	secs := opt + int(le16(file, pe + 20))
-	size := hdrs
-	for k in 0 ..< nsec {
-		s := secs + 40 * k
-		size = max(size, int(le32(file, s + 12)) + int(le32(file, s + 16)))
-	}
-	data := make([]u8, size)
-	copy(data, file[:hdrs])
-	for k in 0 ..< nsec {
-		s := secs + 40 * k
-		va, raw, ptr := int(le32(file, s + 12)), int(le32(file, s + 16)), int(le32(file, s + 20))
-		copy(data[va:va + raw], file[ptr:ptr + raw])
-	}
+	img = pe.load(path)
+	data := img.data
 	for p in PATCHES {
 		o := int(p.va - img.base)
 		old, _ := hex.decode(transmute([]u8)p.old)
@@ -157,32 +113,17 @@ image_load :: proc(path: string) {
 		for b, k in old do fmt.assertf(data[o + k] == b, "patch %x: old bytes differ", p.va)
 		copy(data[o:], nw)
 	}
-	img.data = data
-	// The import directory, data directory 1.
-	imp := int(le32(data, opt + 104))
-	for d := imp; le32(data, d + 12) != 0; d += 20 {
-		dll := strings.to_lower(cstr_at(data, int(le32(data, d + 12))))
-		oft, ft := int(le32(data, d)), int(le32(data, d + 16))
-		names := oft != 0 ? oft : ft
-		for k := 0; le32(data, names + 4 * k) != 0; k += 1 {
-			t := le32(data, names + 4 * k)
-			name := t & 0x8000_0000 != 0 ? fmt.aprintf("ord%d", t & 0xffff) : cstr_at(data, int(t) + 2)
-			img.iat[img.base + u32(ft + 4 * k)] = fmt.aprintf("%s!%s", dll, name)
-		}
-	}
 	insn_at = make([]i32, TEXT_HI - TEXT_LO)
-	assert(je_cs_open() != 0, "capstone open failed")
+	assert(cs.open() != 0, "capstone open failed")
 	for r in 1 ..< len(reg_names) {
-		n := je_cs_reg_name(u32(r))
+		n := cs.reg_name(u32(r))
 		if n != nil do reg_names[r] = strings.clone_from_cstring(n)
 	}
 }
 
 // The word at va, or false outside the image.
 img_u32 :: proc(va: i64) -> (u32, bool) {
-	o := va - i64(img.base)
-	if o < 0 || o + 4 > i64(len(img.data)) do return 0, false
-	return le32(img.data, int(o)), true
+	return pe.u32_at(img, va)
 }
 
 // The decoded instruction at pc in .text, or nil when it does not decode.
@@ -197,10 +138,10 @@ insn :: proc(pc: u32) -> ^Insn {
 
 @(private = "file")
 decode :: proc(pc: u32) -> i32 {
-	@(static) ci: Cs_Insn
+	@(static) ci: cs.Insn
 	o := int(pc - img.base)
 	code := img.data[o:min(o + 16, len(img.data))]
-	r := je_cs_decode(raw_data(code), len(code), u64(pc), &ci)
+	r := cs.decode(raw_data(code), len(code), u64(pc), &ci)
 	fmt.assertf(r >= 0, "capstone lists no register accesses at %08x", pc)
 	if r == 0 do return -1
 	fmt.assertf(ci.op_count <= 4, "%08x: %d operands", pc, ci.op_count)

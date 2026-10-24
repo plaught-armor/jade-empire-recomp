@@ -8,10 +8,11 @@ at runtime except where `docs/unpack.md` says so.
 Reproduce:
 
 ```
-python tools/inventory.py unpacked/JadeEmpire.exe re/ghidra_funcs.txt out.json --data-seeds
-python tools/srcmap.py    unpacked/JadeEmpire.exe re/ghidra_funcs.txt
-python tools/devcalls.py  unpacked/JadeEmpire.exe re/ghidra_funcs.txt 0x76f4f8
-python tools/funcnames.py unpacked/JadeEmpire.exe re > re/funcnames.txt
+tools/build.sh
+port/build/inventory unpacked/JadeEmpire.exe re/ghidra_funcs.txt out.json --data-seeds
+port/build/srcmap    unpacked/JadeEmpire.exe re/ghidra_funcs.txt
+port/build/devcalls  unpacked/JadeEmpire.exe re/ghidra_funcs.txt 0x76f4f8
+port/build/funcnames unpacked/JadeEmpire.exe re > re/funcnames.txt
 ```
 
 Data files: `re/ghidra_funcs.txt` (7504 Ghidra 12.1.4 function starts,
@@ -212,7 +213,7 @@ starts; `tools/x86rec` turns each into a proc name `<name>_<address>`
 (for example `Quat_Slerp_005c1180`), and unnamed functions keep `r_<address>`.
 The address stays in every name, so names are unique even when two functions
 log the same method, and a profile or crash address still greps straight to
-the proc. `tools/funcnames.py` builds the file from five sources, the first
+the proc. `tools/funcnames` builds the file from five sources, the first
 that names a function winning:
 
 | Source | Count | Evidence |

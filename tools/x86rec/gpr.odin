@@ -1,5 +1,7 @@
 package x86rec
 
+import cs "../capstone"
+import "../pe"
 import "core:strings"
 
 // Register liveness decides which promoted registers a call or return must
@@ -59,9 +61,9 @@ gpr_effect :: proc(i: ^Insn, read, write: []u16) -> (u8, u8, u8) {
 	// capstone leaves some operand reads out (`test [m], al`): an operand
 	// register it does not list as written is read.
 	for &op in i.ops[:i.nops] {
-		if op.type == OP_REG && !wrote(write, reg_names[op.reg]) {
+		if op.type == cs.OP_REG && !wrote(write, reg_names[op.reg]) {
 			if b, ok := gpr_bit(reg_names[op.reg]); ok do use |= b.bit
-		} else if op.type == OP_MEM {
+		} else if op.type == cs.OP_MEM {
 			for x in ([2]u32{op.base, op.index}) {
 				if x == 0 do continue
 				if b, ok := gpr_bit(reg_names[x]); ok do use |= b.bit
@@ -82,9 +84,9 @@ gpr_effect :: proc(i: ^Insn, read, write: []u16) -> (u8, u8, u8) {
 	// `xor r, r`, `sub r, r`, `sbb r, r` (0 or -1 from CF), `and r, 0`,
 	// `or r, -1`.
 	ops := i.ops[:i.nops]
-	if len(ops) == 2 && ops[0].type == OP_REG {
-		same := ops[1].type == OP_REG && ops[1].reg == ops[0].reg && (base == "xor" || base == "sub" || base == "sbb")
-		imm := ops[1].type == OP_IMM && (base == "and" && u32(ops[1].imm) == 0 || base == "or" && u32(ops[1].imm) == 0xFFFFFFFF)
+	if len(ops) == 2 && ops[0].type == cs.OP_REG {
+		same := ops[1].type == cs.OP_REG && ops[1].reg == ops[0].reg && (base == "xor" || base == "sub" || base == "sbb")
+		imm := ops[1].type == cs.OP_IMM && (base == "and" && u32(ops[1].imm) == 0 || base == "or" && u32(ops[1].imm) == 0xFFFFFFFF)
 		if same || imm {
 			if b, ok := gpr_bit(reg_names[ops[0].reg]); ok && b.full do use &= ~b.bit
 		}
@@ -169,7 +171,7 @@ taken_entries :: proc() -> Set {
 	taken: Set
 	for k in 0 ..< 4 {
 		for o := k; o + 4 <= len(img.data); o += 4 {
-			v := le32(img.data, o)
+			v := pe.le32(img.data, o)
 			if v in entries do set_add(&taken, v)
 		}
 	}

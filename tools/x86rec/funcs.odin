@@ -1,6 +1,7 @@
 #+feature dynamic-literals
 package x86rec
 
+import cs "../capstone"
 import "core:slice"
 
 Set :: map[u32]struct{}
@@ -62,7 +63,7 @@ control :: proc(i: ^Insn) -> (Kind, u32) {
 	if m == "ret" || m == "retn" do return .Ret, 0
 	if m == "jmp" || jcc_cond(m) != "" || m == "jecxz" || m == "loop" || m == "loope" || m == "loopne" || m == "call" {
 		op := &i.ops[0]
-		if op.type == OP_IMM {
+		if op.type == cs.OP_IMM {
 			kind: Kind = m == "jmp" ? .Jmp : m == "call" ? .Call : .Jcc
 			return kind, u32(op.imm)
 		}
@@ -79,10 +80,10 @@ text :: proc(v: u32) -> bool {
 // in the same block, or nil.
 switch_table :: proc(i: ^Insn, prev: ^Insn) -> [dynamic]u32 {
 	op := &i.ops[0]
-	if op.type != OP_MEM || op.base != 0 || op.index == 0 || op.scale != 4 do return nil
+	if op.type != cs.OP_MEM || op.base != 0 || op.index == 0 || op.scale != 4 do return nil
 	ents: [dynamic]u32
 	tbl := i64(u32(op.disp))
-	if prev != nil && prev.mnemonic == "neg" && prev.ops[0].type == OP_REG && prev.ops[0].reg == op.index {
+	if prev != nil && prev.mnemonic == "neg" && prev.ops[0].type == cs.OP_REG && prev.ops[0].reg == op.index {
 		// `neg idx; jmp [idx*4 + table]` indexes at or below the table (CRT
 		// memmove backward tail, index -7..0): scan down from slot 0.
 		for k in 0 ..< i64(4096) {
@@ -298,7 +299,7 @@ imm_pointers :: proc(fs: []^Func, out: ^Set) {
 			if i == nil do continue
 			if k, _ := control(i); k != .None do continue
 			for op in i.ops[:i.nops] {
-				if op.type == OP_IMM && text(u32(op.imm)) do set_add(out, u32(op.imm))
+				if op.type == cs.OP_IMM && text(u32(op.imm)) do set_add(out, u32(op.imm))
 			}
 		}
 	}

@@ -130,7 +130,7 @@ D3D9 sizes it asked for; enhancements live entirely on the GL side.
   place of a font. Dialogue Overhaul's `JE-Fonts.tpf` is one: a ZIP XORed with
   0x3FA43FA4 (little-endian dword), entries under Texmod's fixed ZIP password,
   holding `texmod.def` and an 8192x8192 RGBA PNG (cache at 8x, glyph in alpha);
-  `tools/untpf.py` unpacks it.
+  `tools/untpf` unpacks it.
   Its cells are the cache as the main menu fills it: eurogui from slot 0, then
   eurodialog from slot 87, each in the order
   ``a-z A-Z 0-9 -+=`'",.!@#$%^&*()<>:;/\?`` (87 chars; slot s at cell s mod 32,

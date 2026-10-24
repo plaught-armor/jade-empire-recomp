@@ -2,19 +2,18 @@
 rem Builds the port natively on 64-bit Windows: build\win\jade.exe plus the
 rem DLLs it needs beside it (SDL3, FFmpeg) and play.bat. Run it from an
 rem "x64 Native Tools Command Prompt for VS" (Visual Studio or its Build
-rem Tools, with the C++ workload) with odin and python on PATH; curl and tar
+rem Tools, with the C++ workload) with odin on PATH; curl and tar
 rem come with Windows 10 and later. Generate src\rec first (README.md).
 rem
 rem The code targets x86-64-v3 (AVX2) unless JE_ARCH names another
 rem -microarch, as in build_windows.sh, and a build from the same commit and
 rem Odin version gets the same build ID as that cross build, so the two play
-rem online together (build_id.py, docs/hle.md §11). JE_OPT=none builds
+rem online together (..\tools\build_id, docs/hle.md §11). JE_OPT=none builds
 rem unoptimized; other arguments pass through to odin.
 setlocal
 cd /d "%~dp0"
 where cl >nul 2>nul || (echo cl.exe not found: run this from an x64 Native Tools Command Prompt. & exit /b 1)
 where odin >nul 2>nul || (echo odin not found on PATH. & exit /b 1)
-where python >nul 2>nul || (echo python not found on PATH. & exit /b 1)
 if not exist src\rec\ (echo src\rec is missing: generate it with tools\x86rec.py first ^(README.md^). & exit /b 1)
 if not defined JE_OPT set JE_OPT=speed
 if not defined JE_ARCH set JE_ARCH=x86-64-v3
@@ -81,8 +80,8 @@ rem stb_vorbis with deterministic sin and cos (src\win32\vorbis.c, build.sh).
 cl /nologo /std:c17 /O2 /w /MT /fp:precise /I"%ODIN_SYS%\vendor\stb\src" /c src\win32\vorbis.c /Fobuild\win\vorbis.obj || exit /b 1
 lib /nologo /out:build\win\vorbis.lib build\win\vorbis.obj || exit /b 1
 
-for /f %%i in ('python build_id.py') do set "BUILD_ID=%%i"
-if not defined BUILD_ID (echo build_id.py failed. & exit /b 1)
+for /f %%i in ('odin run ..\tools\build_id -out:build\win\build_id.exe') do set "BUILD_ID=%%i"
+if not defined BUILD_ID (echo ..\tools\build_id failed. & exit /b 1)
 set "ODIN_ROOT=%ROOT%"
 odin build src -out:build\win\jade.exe -use-separate-modules -o:%JE_OPT% -microarch:%JE_ARCH% -define:GL_DEBUG=%JE_GL_DEBUG% -define:JE_BUILD_ID=%BUILD_ID% %* || exit /b 1
 

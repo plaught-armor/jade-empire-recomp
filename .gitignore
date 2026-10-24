@@ -17,7 +17,6 @@
 /port/src/rec/
 !/port/build.sh
 !/port/build_windows.sh
-!/port/build_id.py
 !/port/build.bat
 !/port/play.sh
 !/port/play.bat

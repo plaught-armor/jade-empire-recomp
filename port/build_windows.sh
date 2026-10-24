@@ -6,7 +6,7 @@
 # $XWIN (default ~/.local/share/xwin; `xwin --accept-license splat --output
 # ~/.local/share/xwin`). The code targets x86-64-v3 (AVX2) unless JE_ARCH
 # names another -microarch, so one exe runs on any recent PC. Online peers
-# need the same build ID (build_id.py, docs/hle.md §11). Other flags pass
+# need the same build ID (../tools/build_id, docs/hle.md §11). Other flags pass
 # through to odin, as in build.sh.
 set -eu
 cd "$(dirname "$0")"
@@ -83,6 +83,9 @@ clang-cl --target=x86_64-pc-windows-msvc /std:c17 /O2 /w /MT /fp:precise -ffp-co
 	"/I$odin_sys/vendor/stb/src" /c src/win32/vorbis.c /Fobuild/win/vorbis.obj
 llvm-lib /out:build/win/vorbis.lib build/win/vorbis.obj
 
+# The build ID, from a host build of ../tools/build_id.
+id="$(odin run ../tools/build_id -out:build/build_id)"
+
 # Odin's -windows-sdk-root passes /winsysroot, which wants the MSVC folder
 # layout; xwin's splat layout needs the library paths named. With a large
 # open-file limit (the default 1048576 in some shells) the Windows-target
@@ -92,7 +95,7 @@ ODIN_ROOT="$PWD/$root" odin build src -out:build/win/jade.exe -target:windows_am
 	-windows-sdk-root:"$XWIN" -linker:lld -use-separate-modules \
 	-o:"${JE_OPT:-speed}" -microarch:"${JE_ARCH:-x86-64-v3}" \
 	-define:GL_DEBUG="${JE_GL_DEBUG:-false}" \
-	-define:JE_BUILD_ID="$(python3 build_id.py)" \
+	-define:JE_BUILD_ID="$id" \
 	-extra-linker-flags:"/libpath:$XWIN/crt/lib/x86_64 /libpath:$XWIN/sdk/lib/um/x86_64 /libpath:$XWIN/sdk/lib/ucrt/x86_64" \
 	"$@"
 

@@ -11,6 +11,10 @@ the game (the Steam release). The recompiled code is generated on your machine
 from your own `JadeEmpire.exe`; nothing from the game is shipped here or in a
 build.
 
+**Only tested with the Steam release of Jade Empire: Special Edition.** The
+GOG, Origin/EA app and retail disc versions have not been tried; their exes
+likely differ from the one the recompiler's address lists were made from.
+
 ## Requirements
 
 - The Steam release of Jade Empire: Special Edition. Its `JadeEmpire.exe` has

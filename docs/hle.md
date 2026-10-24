@@ -351,9 +351,12 @@ that had it by frame 60, about 18800 heap bytes, every time.
 under lockstep (wall time otherwise).
 
 **Net protocol** (UDP). The joiner resends HELLO until WELCOME. HELLO
-carries the port version, a hash of the port's own binary (the running
-executable's file: the same code and `-microarch` on both peers, so a Linux
-and a Windows peer never match), the game exe hash and a hash of the names and
+carries the port version, the build ID (`build_id.sh`, which build.sh and
+build_windows.sh pass in as `JE_BUILD_ID`: a hash of every file under
+`port/src`, the recompiled code included, the Odin version and the target
+OS, so two machines that build the same commit match whatever `-microarch`
+each used, and a Linux and a Windows peer never match; a build made without
+it hashes its own binary instead), the game exe hash and a hash of the names and
 contents of the files under `override` and `textures_hd`; any difference is
 a REJECT with the reason logged on both sides. `Save`, `JadeEmpire.ini` and
 the gameplay settings are not compared: the joiner takes the host's (Save
@@ -545,7 +548,7 @@ is the joiner's own: `settings_sync` leaves `P2_HERO` out.
 `win32/net_save.odin`). The joiner plays on the host's `Save`, the host's
 `JadeEmpire.ini` and the host's gameplay settings, never on its own, so
 peers need not copy saves or match configs by hand and a rejoin always
-boots as the host did. Only the port binary, the game exe, `override` and
+boots as the host did. Only the build ID, the game exe, `override` and
 `textures_hd` must match (the config check above).
 
 - At boot, before it hosts, the host lists `Save` (every folder and file
@@ -638,12 +641,18 @@ tests with `JE_INPUT_SCRIPT`, not the ctl channel (docs/recompiler.md §7): a
 ctl `wait` ends a few frames late by a varying amount, so ctl `pad` commands
 land on different frames in two runs and the runs diverge.
 
-Not handled: the binary's own hash rules out peers on different builds or
-`-microarch` (SIMD reductions in natives can round differently), so for two
-machines build once with a `JE_ARCH` both CPUs have and copy `jade`. Not
-guarded: `libm` (`sin`, `cos`, `exp`, `log`, `pow` and their `f` forms are
-called from the system's) can differ between glibc versions, so the machines
-should run the same distribution release; a desync line would show it. Tested
+Peers on different CPUs (v152): the game's math is bit-exact whatever
+`-microarch` built it (no fused multiply-add, the SIMD natives keep the scalar
+order, and the transcendentals the game and its natives use come from
+`x86/libm.odin`, not the system libm: docs/recompiler.md §4), so the build ID
+covers sources, compiler and OS but not the CPU. Checked over localhost in the
+dragonfly minigame: a `-microarch:native` (Zen 4, AVX-512) host and an
+`x86-64-v3` joiner built in another directory, both flying and firing, kept
+equal hashes through frame 6180, and again through frame 4740 with the
+joiner's glibc held off its AVX2 and FMA variants
+(`GLIBC_TUNABLES=glibc.cpu.hwcaps=-AVX2,-FMA,-AVX512F`). Two physical CPUs
+and two glibc releases are untested. Rendering and audio still call the
+system libm; they do not feed the game state. Tested
 over localhost only, real links untested. Through a proxy that delays 50 ms with 20 ms of jitter (reordering
 packets) and drops 5% of them, 78 hashes stayed equal through frame 4680; the
 game then runs slower than 60 fps, as a 100 ms round trip exceeds the 4-frame

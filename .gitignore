@@ -15,6 +15,7 @@
 /port/src/rec/
 !/port/build.sh
 !/port/build_windows.sh
+!/port/build_id.sh
 !/port/play.sh
 !/port/play.bat
 __pycache__/

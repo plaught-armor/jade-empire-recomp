@@ -118,10 +118,10 @@ Move_Dir_0045c720 :: proc() {
 	turn := wrap_pi(d.view + stick - now)
 	step := TURN_RATE * lf(ld(APP) + APP_DT)
 	want := now + clamp(turn, -step, step)
-	st(this + MOVE_WANT_FACING, transmute(u32)math.cos(want))
-	st(this + MOVE_WANT_FACING + 0x4, transmute(u32)math.sin(want))
+	st(this + MOVE_WANT_FACING, transmute(u32)x86.cos(want))
+	st(this + MOVE_WANT_FACING + 0x4, transmute(u32)x86.sin(want))
 	st(this + MOVE_WANT_FACING + 0x8, 0)
-	ahead := n * max(math.cos(turn), TURN_CRAWL)
+	ahead := n * max(x86.cos(turn), TURN_CRAWL)
 	st(dir, transmute(u32)(fx * ahead))
 	st(dir + 0x4, transmute(u32)(fy * ahead))
 	c.ecx = this

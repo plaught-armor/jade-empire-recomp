@@ -66,11 +66,11 @@ On the title menu, pick **Online → Host Online Game**. The address to give
 your friend appears in the window title and on the clipboard; UDP port 47000
 is opened through UPnP when the router allows it, otherwise forward it by
 hand. The other player picks **Online → Join Online Game** and types or pastes
-that address. Both players must run the same game files and a byte-identical
-port binary (the peers check), and the joiner plays on the host's save and
-settings. Two separate builds match only when made from the same commit with
-the same toolchain and `JE_ARCH` (for example `JE_ARCH=x86-64-v3`); this has
-not been verified across machines yet. See `docs/hle.md` §11.
+that address. Both players must have the same game files and builds of the
+port from the same commit with the same Odin version, on the same OS (the
+peers check; a Linux and a Windows player cannot play together). The CPU does
+not matter: the game's math is bit-exact on any x86-64 build. The joiner plays
+on the host's save and settings. See `docs/hle.md` §11.
 
 ## Documentation
 

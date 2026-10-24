@@ -5,9 +5,9 @@
 # lld-link and the Windows SDK and CRT splatted by xwin into
 # $XWIN (default ~/.local/share/xwin; `xwin --accept-license splat --output
 # ~/.local/share/xwin`). The code targets x86-64-v3 (AVX2) unless JE_ARCH
-# names another -microarch, so one exe runs on any recent PC. Both online
-# peers must run the same exe (docs/hle.md §11). Other flags pass through to
-# odin, as in build.sh.
+# names another -microarch, so one exe runs on any recent PC. Online peers
+# need the same build ID (build_id.sh, docs/hle.md §11). Other flags pass
+# through to odin, as in build.sh.
 set -eu
 cd "$(dirname "$0")"
 XWIN="${XWIN:-$HOME/.local/share/xwin}"
@@ -86,6 +86,7 @@ ODIN_ROOT="$PWD/$root" odin build src -out:build/win/jade.exe -target:windows_am
 	-windows-sdk-root:"$XWIN" -linker:lld -use-separate-modules \
 	-o:"${JE_OPT:-speed}" -microarch:"${JE_ARCH:-x86-64-v3}" \
 	-define:GL_DEBUG="${JE_GL_DEBUG:-false}" \
+	-define:JE_BUILD_ID="$(./build_id.sh windows)" \
 	-extra-linker-flags:"/libpath:$XWIN/crt/lib/x86_64 /libpath:$XWIN/sdk/lib/um/x86_64 /libpath:$XWIN/sdk/lib/ucrt/x86_64" \
 	"$@"
 

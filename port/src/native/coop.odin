@@ -73,7 +73,7 @@ coop_evade_dir :: proc(cre: u32) -> (x, y: f32) {
 		w = coop_cam_yaw() + math.atan2(-f32(coop_pad.x), f32(coop_pad.y))
 	}
 	rel := w - pa // counterclockwise from the player's facing
-	return -math.sin(rel), math.cos(rel)
+	return -x86.sin(rel), x86.cos(rel)
 }
 
 // CPlayerControl frame, thiscall(dt), ret 4 (control vtable slot 8), which

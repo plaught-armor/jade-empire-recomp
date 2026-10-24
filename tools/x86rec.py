@@ -1859,12 +1859,12 @@ def lift_x87(L, ins):
         elif modrm in FCONST:
             push(FCONST[modrm])
         elif modrm == 0xF0:
-            set_st(0, "math.pow(2, %s) - 1" % st(0))
+            set_st(0, "x86.f2xm1(%s)" % st(0))
         elif modrm == 0xF1:
             set_st(1, "%s * math.log2(%s)" % (st(1), st(0)))
             pop()
         elif modrm == 0xF2:
-            set_st(0, "math.tan(%s)" % st(0))
+            set_st(0, "x86.tan(%s)" % st(0))
             push("1")
         elif modrm == 0xF3:
             set_st(1, "math.atan2(%s, %s)" % (st(1), st(0)))
@@ -1878,16 +1878,16 @@ def lift_x87(L, ins):
             # fsincos: st(0) = sin, then cos pushed; the push lands in another
             # register, so it goes first and both read the old st(0).
             v = st(0)
-            push("math.cos(%s)" % v)
-            set_st(1, "math.sin(%s)" % v)
+            push("x86.cos(%s)" % v)
+            set_st(1, "x86.sin(%s)" % v)
         elif modrm == 0xFC:
             set_st(0, "x86.round_cw(%s)" % st(0))
         elif modrm == 0xFD:
-            set_st(0, "%s * math.pow(2, math.trunc(%s))" % (st(0), st(1)))
+            set_st(0, "x86.fscale(%s, %s)" % (st(0), st(1)))
         elif modrm == 0xFE:
-            set_st(0, "math.sin(%s)" % st(0))
+            set_st(0, "x86.sin(%s)" % st(0))
         elif modrm == 0xFF:
-            set_st(0, "math.cos(%s)" % st(0))
+            set_st(0, "x86.cos(%s)" % st(0))
         else:
             raise Unsupported("x87 d9 %02x" % modrm)
     elif op == 0xDB and mem:

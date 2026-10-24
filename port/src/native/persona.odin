@@ -135,7 +135,7 @@ persona_seen :: proc(cre, p: u32, blocking: bool) {
 	if now != habits.at {
 		dt := f32(time.duration_seconds(now - habits.at))
 		if habits.at == 0 {dt = 0}
-		fade := math.exp(-dt / HABIT_SEC)
+		fade := x86.exp(-dt / HABIT_SEC)
 		habits.swings *= fade
 		habits.powers *= fade
 		habits.blocked = habits.blocked * fade + (blocking ? dt : 0)

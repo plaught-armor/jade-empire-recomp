@@ -378,6 +378,22 @@ then needs no flag code.
   at once. Double and
   extended precision both run as f64. Loads, `fst/fstp st(i)`, `fxch` and
   `frstor` use `set_st_raw`: register moves never round, as on hardware.
+- Transcendentals (v152) go through `x86/libm.odin`, not Odin's `math`:
+  `fsin`, `fcos`, `fsincos` and `fptan` call `x86.sin`, `x86.cos` and
+  `x86.tan`, `f2xm1` calls `x86.f2xm1` (exp(x ln 2) - 1) and `fscale` calls
+  `x86.fscale` (`math.ldexp` with the exponent clamped). Odin's
+  `math.sin/cos/exp/pow` are LLVM intrinsics that end in the platform libm,
+  which differs between glibc's FMA and non-FMA variants (picked per CPU at
+  load time), glibc versions and the Windows UCRT, so two online peers could
+  round one result differently and desync. `x86/libm.odin` is musl's fdlibm
+  code in plain f64 with no FMA: within 1 ulp of glibc for sin, cos and exp
+  (97% and 90% identical over random inputs), and bit-identical across
+  `-microarch` native, x86-64-v3 and x86-64 and every `-o` level. Arguments
+  past 2^20·π/2 are first taken mod the f64 nearest 2π, exact but not accurate;
+  the game never gets there. `fpatan` (`math.atan2`) and `fyl2x`
+  (`math.log2`) stay on Odin's own code, which is pure Odin and already
+  deterministic. The natives (`quat.odin`, `emitter.odin`, the camera, turning
+  and co-op code) and the guest-callable D3DX helpers call the same procs.
 - Run cache (`class X87` in `tools/x86rec.py`). `c.fpu` is a global and every
   guest store may alias it as far as LLVM knows, so a direct `st(i)` or
   `set_st` reloaded top, the control word and the register each time. Within a
@@ -826,7 +842,10 @@ calls, no mismatches.
 The port builds for the host CPU (`-microarch:native` in build.sh, AVX2 and
 AVX-512 where present; v44). The natives stay bit-exact under it because LLVM
 neither fuses a multiply and an add nor reassociates without fast-math flags,
-which the port never sets; the binary holds no `vfmadd` instruction. v44
+which the port never sets; the binary holds no `vfmadd` instruction. With the
+transcendentals in `x86/libm.odin` (§4) the game runs bit-identically whatever
+`-microarch` built it, so online peers compare a build ID made from the sources
+rather than the binary (docs/hle.md §11). v44
 (Zen 4) against v43, alternating: 6.27-6.37 against 6.37-6.65 M cycles per
 frame, instructions 13.61-13.66 to 13.34-13.42 M. The Windows build targets
 `x86-64-v3` (AVX2) instead, so one exe runs on any recent PC

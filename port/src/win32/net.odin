@@ -36,7 +36,7 @@ import "vendor:zlib"
 import "../x86"
 
 NET_MAGIC :: 0x494e454a // "JENI"
-NET_VERSION :: 9
+NET_VERSION :: 10
 // The delay covers half the round trip most pings came back within
 // (NET_PING_KEEP of NET_PINGS) plus NET_DELAY_MARGIN frames for frame-time
 // jitter, and is at least NET_DELAY_MIN.
@@ -101,7 +101,7 @@ Net_Head :: struct #packed {
 // mismatch can say which. Save, the ini and the settings come from the host.
 Net_Config :: struct #packed {
 	version: u32,
-	port:    u64, // this port's own binary: same code, same -microarch
+	port:    u64, // this port's build: port_id
 	exe:     u64, // the unpacked game exe
 	files:   u64, // names and sizes under override and textures_hd
 }
@@ -151,7 +151,7 @@ Net_Mismatch :: enum u8 {None, Version, Port, Exe, Files}
 NET_MISMATCH_SAY := [Net_Mismatch]string {
 	.None     = "the host turned us away",
 	.Version  = "the host runs another version of the port",
-	.Port     = "the host runs another build of the port (both need the same jade)",
+	.Port     = "the host runs another build of the port (build both from the same commit)",
 	.Exe      = "the host has another JadeEmpire.exe",
 	.Files    = "the host's override or textures_hd differ from ours",
 }
@@ -302,7 +302,7 @@ nt: Net
 net_connect :: proc(port: string, addr: string, exe: string, settings: []i32, hero: i32, open: bool) -> i32 {
 	nt.cfg = {
 		version = NET_VERSION,
-		port    = file_hash(self_path()),
+		port    = port_id(),
 		exe     = file_hash(exe),
 		files   = files_hash(),
 	}
@@ -518,7 +518,7 @@ net_cfg_check :: proc(c: Net_Config) -> Net_Mismatch {
 	m := nt.cfg
 	switch {
 	case c.version != m.version: fmt.eprintfln("net: peer runs another port version (%d, ours %d)", c.version, m.version); return .Version
-	case c.port != m.port: fmt.eprintln("net: peer runs another build of the port (copy one jade binary to both)"); return .Port
+	case c.port != m.port: fmt.eprintln("net: peer runs another build of the port (build both from the same commit, or copy one jade binary to both)"); return .Port
 	case c.exe != m.exe: fmt.eprintln("net: peer has another JadeEmpire.exe"); return .Exe
 	case c.files != m.files: fmt.eprintln("net: peer's override or textures_hd differ"); return .Files
 	}
@@ -1156,6 +1156,19 @@ state_hash :: proc() -> u64 {
 	clock := [2]u64{u64(vclock), u64(ds_mixed)}
 	xxhash.XXH3_64_update(&h, slice.to_bytes(clock[:]))
 	return xxhash.XXH3_64_digest(&h)
+}
+
+// build_id.sh's hash of the sources, compiler and OS, which build.sh and
+// build_windows.sh pass in; without one, a hash of the binary itself.
+JE_BUILD_ID :: #config(JE_BUILD_ID, "")
+
+@(private = "file")
+port_id :: proc() -> u64 {
+	when JE_BUILD_ID != "" {
+		return xxhash.XXH3_64(transmute([]u8)string(JE_BUILD_ID))
+	} else {
+		return file_hash(self_path())
+	}
 }
 
 // The port's own executable.

@@ -126,7 +126,7 @@ coop_fight :: proc(p, hero: u32) {
 		hero_aim = {lf(hero + CREATURE_FACING), lf(hero + CREATURE_FACING + 4)}
 	} else {
 		a := coop_cam_yaw() + math.atan2(-f32(coop_pad.x), f32(coop_pad.y))
-		hero_aim = {math.cos(a), math.sin(a)}
+		hero_aim = {x86.cos(a), x86.sin(a)}
 	}
 	invalid := ld(OBJECT_INVALID)
 	want := invalid

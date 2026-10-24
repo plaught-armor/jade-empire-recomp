@@ -170,9 +170,9 @@ cam_steer :: proc(this: u32, steady: bool) {
 				// How far the player runs away from the shown camera.
 				f := [2]f32{lf(p + CREATURE_FACING), lf(p + CREATURE_FACING + 4)}
 				a := gyaw + cam.yaw
-				rate *= max(0, f.x * math.cos(a) + f.y * math.sin(a))
+				rate *= max(0, f.x * x86.cos(a) + f.y * x86.sin(a))
 			}
-			cam.yaw *= math.exp(-rate * dt)
+			cam.yaw *= x86.exp(-rate * dt)
 			if abs(cam.yaw) < 0.001 {cam.yaw = 0}
 		}
 	}
@@ -197,8 +197,8 @@ cam_show :: proc(this, c: u32) {
 	cam.pitch = clamp(e0 + cam.pitch, CAM_PITCH_MIN, CAM_PITCH_MAX) - e0
 	// Raise about the horizontal axis across the view, then turn about z.
 	k := [3]f32{v.y / h, -v.x / h, 0}
-	sp, cp := math.sin(cam.pitch / 2), math.cos(cam.pitch / 2)
-	sy, cy := math.sin(cam.yaw / 2), math.cos(cam.yaw / 2)
+	sp, cp := x86.sin(cam.pitch / 2), x86.cos(cam.pitch / 2)
+	sy, cy := x86.sin(cam.yaw / 2), x86.cos(cam.yaw / 2)
 	r := quat_mul({cy, 0, 0, sy}, {cp, k.x * sp, k.y * sp, 0})
 	want := p + quat_rot(r, v)
 	q = quat_mul(r, q)

@@ -114,7 +114,7 @@ mat_translation :: proc(x, y, z: f32) -> Mat {
 mat_rotation_axis :: proc(ax, ay, az, angle: f32) -> Mat {
 	l := math.sqrt(ax * ax + ay * ay + az * az)
 	x, y, z := ax / l, ay / l, az / l
-	s, c := math.sin(angle), math.cos(angle)
+	s, c := x86.sin(angle), x86.cos(angle)
 	k := 1 - c
 	return Mat {
 		{k * x * x + c, k * x * y + s * z, k * x * z - s * y, 0},
@@ -126,9 +126,9 @@ mat_rotation_axis :: proc(ax, ay, az, angle: f32) -> Mat {
 
 // Roll about Z, then pitch about X, then yaw about Y.
 mat_yaw_pitch_roll :: proc(yaw, pitch, roll: f32) -> Mat {
-	sy, cy := math.sin(yaw), math.cos(yaw)
-	sp, cp := math.sin(pitch), math.cos(pitch)
-	sr, cr := math.sin(roll), math.cos(roll)
+	sy, cy := x86.sin(yaw), x86.cos(yaw)
+	sp, cp := x86.sin(pitch), x86.cos(pitch)
+	sr, cr := x86.sin(roll), x86.cos(roll)
 	rz := Mat{{cr, sr, 0, 0}, {-sr, cr, 0, 0}, {0, 0, 1, 0}, {0, 0, 0, 1}}
 	rx := Mat{{1, 0, 0, 0}, {0, cp, sp, 0}, {0, -sp, cp, 0}, {0, 0, 0, 1}}
 	ry := Mat{{cy, 0, -sy, 0}, {0, 1, 0, 0}, {sy, 0, cy, 0}, {0, 0, 0, 1}}
@@ -190,7 +190,7 @@ D3DXMatrixOrthoOffCenterRH :: proc() {
 
 D3DXMatrixPerspectiveFovRH :: proc() {
 	fovy, aspect, zn, zf := argf(1), argf(2), argf(3), argf(4)
-	ys := 1 / math.tan(fovy / 2)
+	ys := 1 / x86.tan(fovy / 2)
 	xs := ys / aspect
 	wr_mat(arg(0), Mat {
 		{xs, 0, 0, 0},

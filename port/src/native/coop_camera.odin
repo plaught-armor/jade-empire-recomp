@@ -79,7 +79,7 @@ coop_cam_update :: proc(p, hero: u32, dt: f32, r: [2]i32) {
 		pc.lift = t.z - lf(p + CREATURE_POS + 8)
 	}
 	if yaw, ok := quat_view_yaw(q); ok && (!steady || beh != 0 && ld(beh + BEH_CLIPPED) == 0) {
-		un := [4]f32{math.cos(-yaw / 2), 0, 0, math.sin(-yaw / 2)}
+		un := [4]f32{x86.cos(-yaw / 2), 0, 0, x86.sin(-yaw / 2)}
 		pc.off = quat_rot(un, g - t)
 		pc.rel = quat_mul(un, q)
 	}
@@ -96,7 +96,7 @@ coop_cam_update :: proc(p, hero: u32, dt: f32, r: [2]i32) {
 		l := math.sqrt(pc.off.x * pc.off.x + pc.off.y * pc.off.y + pc.off.z * pc.off.z)
 		scale = clamp(1 + sep * COOP_FRAME_SPREAD / max(l, 0.1), 1, COOP_FRAME_MAX)
 	}
-	ease := 1 - math.exp(-COOP_FRAME_RATE * dt)
+	ease := 1 - x86.exp(-COOP_FRAME_RATE * dt)
 	pc.shift += (shift - pc.shift) * ease
 	pc.scale += (scale - pc.scale) * ease
 	// The stick turns it; resting, it eases back behind a hero that moves.
@@ -116,14 +116,14 @@ coop_cam_update :: proc(p, hero: u32, dt: f32, r: [2]i32) {
 				rate = COOP_FRAME_TURN
 			} else {
 				back = wrap_pi(face - pc.yaw)
-				rate = CAM_RECENTRE_RATE * max(0, math.cos(back))
+				rate = CAM_RECENTRE_RATE * max(0, x86.cos(back))
 			}
-			pc.yaw = wrap_pi(pc.yaw + back * (1 - math.exp(-rate * dt)))
+			pc.yaw = wrap_pi(pc.yaw + back * (1 - x86.exp(-rate * dt)))
 		}
 	}
 	// Round the hero's look point, pulled in by the game's collision as the
 	// player's camera is.
-	turn := [4]f32{math.cos(pc.yaw / 2), 0, 0, math.sin(pc.yaw / 2)}
+	turn := [4]f32{x86.cos(pc.yaw / 2), 0, 0, x86.sin(pc.yaw / 2)}
 	look := pos + {pc.shift.x, pc.shift.y, pc.lift}
 	want := look + quat_rot(turn, pc.off * pc.scale)
 	pc.q = quat_mul(turn, pc.rel)

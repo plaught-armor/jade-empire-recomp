@@ -11,4 +11,4 @@ cd "$(dirname "$0")"
 mkdir -p build
 cc -std=c17 -O2 -g -Wall -Wextra -Werror -c src/win32/movie.c -o build/movie.o
 ar rcs build/libmovie.a build/movie.o
-odin build src -out:jade -use-separate-modules -debug -o:"${JE_OPT:-speed}" -microarch:"${JE_ARCH:-native}" -define:GL_DEBUG="${JE_GL_DEBUG:-false}" "$@"
+odin build src -out:jade -use-separate-modules -debug -o:"${JE_OPT:-speed}" -microarch:"${JE_ARCH:-native}" -define:GL_DEBUG="${JE_GL_DEBUG:-false}" -define:JE_BUILD_ID="$(./build_id.sh linux)" "$@"

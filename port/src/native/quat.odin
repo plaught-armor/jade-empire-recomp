@@ -157,9 +157,9 @@ Quat_Slerp_005c1180 :: proc() #no_bounds_check {
 	x = round_pc(s, math.sqrt(round_pc(s, one - x)))
 	r := round_pc(s, one / x)
 	sa := round_pc(s, round_pc(s, one - lx(e + 0x1c)) * theta)
-	sa = round_pc(s, round_pc(s, math.sin(sa)) * r)
+	sa = round_pc(s, round_pc(s, x86.sin(sa)) * r)
 	sx(e + 0x18, sa)
-	x = round_pc(s, math.sin(round_pc(s, theta * lx(e + 0x1c))))
+	x = round_pc(s, x86.sin(round_pc(s, theta * lx(e + 0x1c))))
 	sb := round_pc(s, r * x)
 	pb: [4]f64
 	for i in u32(0) ..< 4 {pb[i] = round_pc(s, sb * lx(b + i * 4))}

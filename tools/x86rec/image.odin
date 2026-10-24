@@ -10,6 +10,10 @@ TEXT_LO :: 0x401000
 TEXT_HI :: 0x6E1000
 DATA_LO :: 0x6E1000
 DATA_HI :: 0x895000
+// End of the game's own .data in the shipped section table (GOG exe). Past
+// it the Steam dump holds PECompact leftovers and the GOG exe its .rsrc, so
+// the code-pointer scan stops here and both exes generate the same code.
+DATA_SCAN_HI :: 0x889D74
 OEP :: 0x6B4923
 
 Patch :: struct {

@@ -121,7 +121,7 @@ lock_frame :: proc() {
 }
 
 // JE_LOCK_DUMP=frame:path: at that frame, the hashed memory written to
-// path.img (from NET_HASH_LO), path.heap (from HEAP_LO) and path.va (from
+// path.img (from NET_IMG_LO), path.heap (from HEAP_LO) and path.va (from
 // VA_LO), to find what two runs disagree on.
 lock_dump_frame: i64
 lock_dump_path: string
@@ -131,7 +131,7 @@ lock_dump :: proc() {
 	parts := [3]struct {
 		ext:    string,
 		lo, hi: u32,
-	}{{"img", NET_HASH_LO, NET_HASH_HI}, {"heap", HEAP_LO, heap_top}, {"va", VA_LO, va_top}}
+	}{{"img", NET_IMG_LO, NET_IMG_HI}, {"heap", HEAP_LO, heap_top}, {"va", VA_LO, va_top}}
 	for d in parts {
 		path := fmt.tprintf("%s.%s", lock_dump_path, d.ext)
 		if err := os.write_entire_file(path, x86.mem[d.lo:d.hi]); err != nil {fmt.eprintfln("lockstep: cannot write %s: %v", path, err)}

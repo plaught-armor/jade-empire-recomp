@@ -65,10 +65,15 @@ NET_RESEND_MAX :: 250 * time.Millisecond
 NET_LOST :: 10 * time.Second
 NET_JOIN_WAIT :: 30 * time.Second
 NET_HASH_EVERY :: 60
-// The guest image, the port's data page included: the game's globals. The
-// heap and VirtualAlloc regions are hashed up to their tops.
-NET_HASH_LO :: 0x00400000
-NET_HASH_HI :: 0x00a01000
+// The guest image, the port's data page included (JE_LOCK_DUMP writes it all).
+NET_IMG_LO :: 0x00400000
+NET_IMG_HI :: 0x00a01000
+// What of the image is hashed: the game's .data (its globals) and the port's
+// data page. The headers, .rdata and resources are never written, and they
+// differ between the GOG exe and the unpacked Steam exe. The heap and
+// VirtualAlloc regions are hashed up to their tops.
+NET_HASH_DATA :: [2]u32{0x0075b000, 0x00889d74}
+NET_HASH_PORT :: [2]u32{0x00a00000, 0x00a01000}
 // A rejoining peer asks for the log up to NET_LOG_AHEAD frames past the one
 // it plays, every NET_LOG_ASK while it holds less than half of that; each
 // ask is answered with up to NET_LOG_BURST packets of NET_LOG_BYTES at most.
@@ -303,7 +308,7 @@ net_connect :: proc(port: string, addr: string, exe: string, settings: []i32, he
 	nt.cfg = {
 		version = NET_VERSION,
 		port    = port_id(),
-		exe     = file_hash(exe),
+		exe     = exe_hash(exe),
 		files   = files_hash(),
 	}
 	// Frames 0 and 1 run before the first exchange, on released pads.
@@ -1149,7 +1154,7 @@ net_end :: proc(bye: bool) {
 
 // The game's globals, heap and virtual memory, and the virtual clock.
 state_hash :: proc() -> u64 {
-	regions := [?][2]u32{{NET_HASH_LO, NET_HASH_HI}, {HEAP_LO, heap_top}, {VA_LO, va_top}}
+	regions := [?][2]u32{NET_HASH_DATA, NET_HASH_PORT, {HEAP_LO, heap_top}, {VA_LO, va_top}}
 	h: xxhash.XXH3_state
 	xxhash.XXH3_64_reset(&h)
 	for r in regions {xxhash.XXH3_64_update(&h, x86.mem[r[0]:r[1]])}
@@ -1178,6 +1183,15 @@ self_path :: proc() -> string {
 	p, err := os.get_executable_path(context.temp_allocator)
 	if err != nil {net_fail("cannot find the port's executable: %v", err)}
 	return p
+}
+
+// The game exe's code only, so a peer on the GOG exe meets one on the unpacked
+// Steam exe (the same build).
+@(private = "file")
+exe_hash :: proc(path: string) -> u64 {
+	text := exe_text(path, context.temp_allocator)
+	if text == nil {net_fail("cannot read %s", path)}
+	return xxhash.XXH3_64(text)
 }
 
 @(private = "file")

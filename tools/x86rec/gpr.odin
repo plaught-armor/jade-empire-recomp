@@ -161,16 +161,21 @@ gpr_mod :: proc() -> []u8 {
 
 // Entries other code may reach without a direct call or jump, so a caller
 // the analysis does not see may read any register after they return: the
-// program entry, any entry whose address is a 32-bit word anywhere in the
-// image (function pointers, vtables, immediates), and any entry no direct
-// transfer reaches.
+// program entry, any entry whose address is a 32-bit word in the image below
+// DATA_SCAN_HI outside the IAT (function pointers, vtables, immediates), and
+// any entry no direct transfer reaches. The bound and the IAT skip keep the
+// Steam and GOG exes alike (see data_pointers).
 taken_entries :: proc() -> Set {
 	entries: Set
 	defer delete(entries)
 	for f in funcs do for e in f.entries do set_add(&entries, e)
 	taken: Set
+	hi := int(DATA_SCAN_HI - img.base)
 	for k in 0 ..< 4 {
-		for o := k; o + 4 <= len(img.data); o += 4 {
+		for o := k; o + 4 <= hi; o += 4 {
+			// A word touching an IAT slot.
+			slot := (img.base + u32(o)) &~ 3
+			if slot in img.iat || (k != 0 && slot + 4 in img.iat) do continue
 			v := pe.le32(img.data, o)
 			if v in entries do set_add(&taken, v)
 		}

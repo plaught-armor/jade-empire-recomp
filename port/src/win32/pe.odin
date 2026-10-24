@@ -16,6 +16,31 @@ Image :: struct {
 le16 :: proc(b: []u8, o: int) -> u32 {return u32(b[o]) | u32(b[o + 1]) << 8}
 le32 :: proc(b: []u8, o: int) -> u32 {return le16(b, o) | le16(b, o + 2) << 16}
 
+// The exe's code, x86.TEXT_LO up to x86.TEXT_HI as loaded, read from the file
+// without mapping it; nil when the file is not a 32-bit x86 PE. The unpacked
+// Steam exe and the GOG exe differ in their headers and section layout, not in
+// this range.
+exe_text :: proc(path: string, allocator := context.allocator) -> []u8 {
+	data, err := os.read_entire_file(path, context.temp_allocator)
+	if err != nil || len(data) < 0x400 || data[0] != 'M' || data[1] != 'Z' do return nil
+	pe := int(le32(data, 0x3c))
+	if pe + 24 > len(data) || le32(data, pe) != 0x4550 || le16(data, pe + 4) != 0x14c do return nil
+	opt := pe + 24
+	base := le32(data, opt + 28)
+	text := make([]u8, x86.TEXT_HI - x86.TEXT_LO, allocator)
+	sec := opt + int(le16(data, pe + 20))
+	for i in 0 ..< int(le16(data, pe + 6)) {
+		s := sec + i * 40
+		lo := i64(base) + i64(le32(data, s + 12))
+		raw, n := int(le32(data, s + 20)), int(le32(data, s + 16))
+		if raw > len(data) do continue
+		n = min(n, len(data) - raw)
+		a, b := max(lo, x86.TEXT_LO), min(lo + i64(n), x86.TEXT_HI)
+		if a < b do copy(text[a - x86.TEXT_LO:b - x86.TEXT_LO], data[raw + int(a - lo):raw + int(b - lo)])
+	}
+	return text
+}
+
 load_pe :: proc(path: string) -> Image {
 	data, err := os.read_entire_file(path, context.allocator)
 	if err != nil {

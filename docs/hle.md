@@ -371,8 +371,9 @@ solo `JE_LOCKSTEP=10` hashes equal on Linux and Wine through frame 17600, and
 a Linux host with a Wine joiner checked hashes through frame 6960 with a save
 load and a fight. A build made without
 it hashes its own binary instead; `jade --version` and the first line of
-every log print it), the game exe hash and a hash of the names and
-contents of the files under `override` and `textures_hd`; any difference is
+every log print it), a hash of the game exe's code (0x401000 to 0x6e1000 as
+loaded, so the GOG exe and the unpacked Steam exe match) and a hash of the
+names and sizes of the files under `override` and `textures_hd`; any difference is
 a REJECT with the reason logged on both sides. `Save`, `JadeEmpire.ini` and
 the gameplay settings are not compared: the joiner takes the host's (Save
 and settings from the host, below). HELLO also carries the joiner's pick of
@@ -640,11 +641,13 @@ version 2 (41-byte header, 16 bytes an input), 9.3 times less, before the
 28 bytes of UDP and IP headers.
 
 **Desync check.** Every 60 frames each peer sends `state_hash()`: XXH3 of
-the guest image (0x400000..0xa01000), the heap up to `heap_top`, the
+the game's .data (0x75b000..0x889d74), the port's data page
+(0xa00000..0xa01000), the heap up to `heap_top`, the
 VirtualAlloc region up to `va_top`, `vclock` and the mixed sample count. A
 mismatch logs `net: desync at frame N` once. The `JE_LOCKSTEP` lines carry
 the clock and the mixed count as well, and `JE_LOCK_DUMP=frame:path` writes
-the hashed memory at that frame to `path.img`, `path.heap` and `path.va`,
+the memory at that frame to `path.img` (the whole image, 0x400000..0xa01000),
+`path.heap` and `path.va`,
 so the dumps of two runs that disagree can be diffed word by word (heap
 blocks are tagged `HEAP` and `FREE`).
 

@@ -59,6 +59,12 @@ Iteration time (16 threads):
 - Function regions come from the Ghidra function list. Entries are the region
   start, plus every in-region target reached from outside: call targets, tail-jump
   targets, data pointers into .text and switch-table entries.
+- Data pointers come from the 32-bit words of .rdata and .data up to
+  `DATA_SCAN_HI` (0x889d74, the end of .data in the shipped section table),
+  skipping IAT slots. Past that bound the Steam dump holds PECompact leftovers
+  and the GOG exe its .rsrc, and the IAT holds import name RVAs that differ
+  between the two, so with both limits the Steam and GOG exes (same build,
+  byte-identical .text) generate the same code.
 - A function is one Odin proc over its basic-block labels, emitted structured
   (`structure`): blocks in address order, a jump back to label q is `continue
   L_q` in a labeled `for` loop opened at q, and a jump forward to q is `break
@@ -217,9 +223,10 @@ Iteration time (16 threads):
   as a read of r.
 - Taken entries (`taken_entries`). Code the analysis does not see may reach
   some entries: the program entry, any entry whose address appears as an
-  aligned or unaligned 32-bit word in the image (function pointers, vtables,
-  immediates), and any entry no direct transfer reaches. Their returns store
-  every register.
+  aligned or unaligned 32-bit word in the image below `DATA_SCAN_HI` and
+  outside the IAT (function pointers, vtables, immediates; the bounds are
+  §1's), and any entry no direct transfer reaches. Their returns store every
+  register.
 - Saved-register transparency (`transparency`, section "saved registers").
   An entry is transparent in a register when it leaves it with its entry
   value and reads that value only to save and restore it. A direct call to

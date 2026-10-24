@@ -3,9 +3,10 @@ rem Runs the Jade Empire port on Windows with the whole session logged to
 rem logs\play-<timestamp>.log beside this file. F12 in game writes a mark line
 rem and the frame as logs\play-<timestamp>\mark_NN_frame_NNNNN.ppm.
 rem
-rem GAME is the Jade Empire install folder. EXE is the unpacked
-rem JadeEmpire.exe (docs/unpack.md; the shipped exe is packed and does not
-rem run); by default it is a copy named JadeEmpire.exe beside this file.
+rem GAME is the Jade Empire install folder. EXE is the unpacked Steam
+rem JadeEmpire.exe (docs/unpack.md; the shipped Steam exe is packed and does
+rem not run) or the GOG one as shipped; by default it is a copy named
+rem JadeEmpire.exe beside this file.
 rem Either can also be set in the environment before running this.
 rem
 rem Online co-op: on the title menu the host picks Host Online Game; the

@@ -268,7 +268,9 @@ split_overlaps :: proc(f: ^Func) {
 }
 
 data_pointers :: proc(out: ^Set) {
-	for va := i64(DATA_LO); va < DATA_HI - 3; va += 4 {
+	for va := i64(DATA_LO); va < DATA_SCAN_HI - 3; va += 4 {
+		// IAT slots hold name RVAs, which differ between the Steam and GOG exes.
+		if u32(va) in img.iat do continue
 		v, _ := img_u32(va)
 		if text(v) do set_add(out, v)
 	}

@@ -11,7 +11,7 @@ layer in `docs/hle.md`. Function names match `re/names.txt` and
 Hook means a native proc registered over the function in
 `port/src/native/native.odin`; call means the port calls the guest function
 through `win32.guest_call`; patch means bytes rewritten by `PATCHES` in
-`tools/x86rec.py`.
+`tools/x86rec/image.odin`.
 
 ## Frame of a player move
 

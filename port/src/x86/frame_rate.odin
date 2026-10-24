@@ -8,7 +8,7 @@ frame_rate: u32 = FRAME_RATE_GAME
 FRAME_RATE_GAME :: 30
 
 // n frames at FRAME_RATE_GAME as a count at frame_rate, at least 1. The
-// generator emits it for the immediates tools/x86rec.py FRAME_COUNTS lists.
+// generator emits it for the immediates tools/x86rec FRAME_COUNTS lists.
 // WHY: docs/rendering.md §5
 frames :: proc "contextless" (n: u32) -> u32 {
 	return max(1, (n * frame_rate + FRAME_RATE_GAME / 2) / FRAME_RATE_GAME)

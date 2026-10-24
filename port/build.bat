@@ -14,7 +14,7 @@ setlocal
 cd /d "%~dp0"
 where cl >nul 2>nul || (echo cl.exe not found: run this from an x64 Native Tools Command Prompt. & exit /b 1)
 where odin >nul 2>nul || (echo odin not found on PATH. & exit /b 1)
-if not exist src\rec\ (echo src\rec is missing: generate it with tools\x86rec.py first ^(README.md^). & exit /b 1)
+if not exist src\rec\ (echo src\rec is missing: generate it with tools\x86rec first ^(README.md^). & exit /b 1)
 if not defined JE_OPT set JE_OPT=speed
 if not defined JE_ARCH set JE_ARCH=x86-64-v3
 if not defined JE_GL_DEBUG set JE_GL_DEBUG=false

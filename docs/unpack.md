@@ -12,7 +12,7 @@ link-time contents.
 python tools/unpack_pec2.py "steamapps/common/Jade Empire/JadeEmpire.exe" unpacked/JadeEmpire.exe
 ```
 
-Needs `unicorn`, `capstone`, `pefile` (any venv).
+Needs `unicorn` and `pefile` (any venv).
 
 ## What the stub does
 

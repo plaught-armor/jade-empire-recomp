@@ -207,7 +207,7 @@ D3D9 sizes it asked for; enhancements live entirely on the GL side.
   | 0x4eaa3c, 0x4eaa43 | 30 / 10 | creature trail: a point every 30 (10) frames, 5 kept |
   | 0x4f080b, 0x4f0826 | 30 / 10 | creature periodic check (0x479be0 event 9) |
 
-  `tools/x86rec.py` `FRAME_COUNTS` lists these instructions. The lift emits
+  `FRAME_COUNTS` in `tools/x86rec/lift.odin` lists these instructions. The lift emits
   `x86.frames(imm)`, which returns the same span at the current rate:
   `x86.frame_rate` (Present's frame period, smoothed and rounded to whole
   fps) × imm / 30. At the stock cap the rate is 30 and the counts are unchanged.

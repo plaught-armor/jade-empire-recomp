@@ -1,20 +1,20 @@
 # x86 → Odin static recompiler
 
-Generator: `tools/x86rec.py <JadeEmpire.exe> <re/ghidra_funcs.txt> port/src/rec`
-(needs pefile and capstone). Output: `port/src/rec/mNN/code.odin`, about 40 000
+Generator: `tools/x86rec/` (Odin), built by `tools/x86rec/build.sh` (or
+`build.bat`) as `port/build/x86rec`, run as
+`port/build/x86rec <JadeEmpire.exe> <re/ghidra_funcs.txt> port/src/rec`. It
+decodes with capstone 5.0.7, which the build script compiles from the pinned
+source tarball. Output: `port/src/rec/mNN/code.odin`, about 40 000
 instructions per package; each package is a separate LLVM module under
 `-use-separate-modules`. Runtime: `port/src/x86/`. Regenerate after every
 generator change. Generated code is never edited by hand.
 
 Iteration time (16 threads):
 
-- The whole-program analyses (flag and GPR liveness, transparency), about
-  three quarters of a run, depend only on the image, the function list and
-  the generator source. Their results are cached in
-  `port/build/x86rec_analysis.pickle`, keyed by a hash of those three files,
-  so a regen for a new native or hook takes about 50 s instead of 230 s.
-  Any edit to `tools/x86rec.py` (PATCHES included) reruns them. The cached
-  and fresh outputs are byte-identical.
+- A regen takes about 8 s, the whole-program analyses (flag and GPR
+  liveness, transparency) included, so nothing is cached between runs. The
+  Python generator it replaced took 230 s, or 50 s with its analyses cached;
+  the Odin port's output is byte-identical to it.
 - `port/build.sh` takes about 35 s. LLVM codegen is all of it. Before
   `COLD_LABELS` it took 143 s: two cold functions with over 5000 labels each
   (§1) held one thread for about 90 s while the other modules had finished.
@@ -178,7 +178,7 @@ Iteration time (16 threads):
   waits for the driver thread. `build.sh` passes `-define:GL_DEBUG=false`
   (`JE_GL_DEBUG=true ./build.sh` restores it). Combat at a 144 fps cap went
   from 80-90 fps to 104-112.
-- Register promotion (`promote_regs` in `tools/x86rec.py`). The guest
+- Register promotion (`promote_regs` in `tools/x86rec/emit.odin`). The guest
   registers and flags live in `x86.cpu`, a global, and LLVM must assume any
   guest store aliases it, so `c.esp` (677k references) was reloaded after every
   push and stack store. Each function now keeps the registers it names in
@@ -407,7 +407,7 @@ then needs no flag code.
   (`math.log2`) stay on Odin's own code, which is pure Odin and already
   deterministic. The natives (`quat.odin`, `emitter.odin`, the camera, turning
   and co-op code) and the guest-callable D3DX helpers call the same procs.
-- Run cache (`class X87` in `tools/x86rec.py`). `c.fpu` is a global and every
+- Run cache (`X87` in `tools/x86rec/lift.odin`). `c.fpu` is a global and every
   guest store may alias it as far as LLVM knows, so a direct `st(i)` or
   `set_st` reloaded top, the control word and the register each time. Within a
   run of x87 instructions in one block, top moves by an amount known at
@@ -845,7 +845,7 @@ The separate-module build (`-use-separate-modules`) never inlines
 one included: 30 in the quad vertices alone. The hot natives, whose indexes
 are loop constants or bounded by their own guards (rope indexes below the
 checked extent, pose nodes below POSE_NODES_MAX), carry `#no_bounds_check`,
-and `sv` with them (v45, v46); the discovery patterns in x86rec.py accept
+and `sv` with them (v45, v46); the discovery patterns (`native_scan` in tools/x86rec/emit.odin) accept
 the tag on a native's header. Check: `objdump -d port/jade` shows
 `bounds_check_error` only in native.odin's check-mode and registration code.
 v46 against v45, alternating: 6.14-6.18 against 6.23-6.30 M cycles per
@@ -867,7 +867,7 @@ it).
 
 ## §9 Guest patches
 
-`PATCHES` in `tools/x86rec.py` rewrites guest bytes before decoding. Each
+`PATCHES` in `tools/x86rec/image.odin` rewrites guest bytes before decoding. Each
 entry names the original bytes, and the generator stops if they differ. A
 patch goes on the list only when the code it changes holds a screen up for a
 fixed time and nothing waits on that time, or when it removes a constant the

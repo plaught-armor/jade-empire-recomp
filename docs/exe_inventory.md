@@ -208,7 +208,7 @@ emulation of whatever fixed-function draws remain (`SetFVF` paths).
 ## 8. Function names
 
 `re/funcnames.txt` gives readable names to 2973 of the 7504 Ghidra function
-starts; `tools/x86rec.py` turns each into a proc name `<name>_<address>`
+starts; `tools/x86rec` turns each into a proc name `<name>_<address>`
 (for example `Quat_Slerp_005c1180`), and unnamed functions keep `r_<address>`.
 The address stays in every name, so names are unique even when two functions
 log the same method, and a profile or crash address still greps straight to

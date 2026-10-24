@@ -25,8 +25,9 @@ likely differ from the one the recompiler's address lists were made from.
 - SDL3 and the FFmpeg development libraries (`libavcodec`, `libavformat`,
   `libavutil`, `libswscale`, `libswresample`), plus a C compiler for
   `port/src/win32/movie.c`.
-- Python 3 with `pefile`, `capstone` and `unicorn`:
-  `pip install pefile capstone unicorn`.
+- Python 3 with `pefile` and `unicorn` for unpacking the exe:
+  `pip install pefile unicorn`.
+- curl, for the capstone 5.0.7 source the recompiler builds against.
 - An x86-64 CPU with AVX2.
 
 ## Building
@@ -39,8 +40,10 @@ repository root (a symlink is fine) and the unpacked exe at
 # 1. Unpack the PECompact2-packed exe (docs/unpack.md).
 python3 tools/unpack_pec2.py "steamapps/common/Jade Empire/JadeEmpire.exe" unpacked/JadeEmpire.exe
 
-# 2. Generate the recompiled code into port/src/rec (about 4 minutes).
-python3 tools/x86rec.py unpacked/JadeEmpire.exe re/ghidra_funcs.txt port/src/rec
+# 2. Build the recompiler (tools/x86rec/build.bat on Windows) and generate
+#    the recompiled code into port/src/rec (about 10 seconds).
+tools/x86rec/build.sh
+port/build/x86rec unpacked/JadeEmpire.exe re/ghidra_funcs.txt port/src/rec
 
 # 3. Build (about 45 seconds) and run.
 port/build.sh

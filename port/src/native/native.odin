@@ -212,7 +212,7 @@ check :: proc(addr: u32, native_fn, guest: x86.Func, outs: []Region) {
 	}
 }
 
-// A native span (tools/x86rec.py, SPAN_HEAD) under JE_NATIVE=check: span_check
+// A native span (tools/x86rec, SPAN_HEAD in native_scan) under JE_NATIVE=check: span_check
 // runs the native stretch, keeps what it left, puts the registers and outputs
 // back and returns false, so the recompiled stretch runs; span_end, at the exit
 // block, compares. live picks the GPRs compared (bit k is R32 order: eax ecx

@@ -1,0 +1,1061 @@
+# Jade Empire NWScript engine functions: id, name, return type, parameter types, defaults for the trailing parameters.
+# Source: xoreos src/engines/jade/script/function_tables.h (GPLv3); ids checked against shipped override/*.ncs. See docs/modding.md §2.
+id	name	return	params	defaults
+0	Random	Int	Int	
+1	PrintString	Void	String,Int	0
+2	PrintFloat	Void	Float,Int,Int,Int	18|9|0
+3	FloatToString	String	Float,Int,Int	18|9
+4	PrintInteger	Void	Int,Int	0
+5	PrintObject	Void	Object,Int	0
+6	AssignCommand	Void	Object,ScriptState	
+7	DelayCommand	Void	Float,ScriptState	
+8	ExecuteScript	Void	Object,String	
+9	ClearAllActions	Void		
+10	SetFacing	Void	Float,Int,Object,Int	0|OBJECT_SELF|0
+11	SetCalendar	Void	Int,Int,Int	
+12	SetTime	Void	Int,Int,Int,Int	
+13	DesignerAssert	Void	String,Int,Int	1|1
+14	ActionPlayerCombat	Void		
+15	CanUse	Int	Object,String	
+16	GetTimeHour	Int		
+17	GetTimeMinute	Int		
+18	GetTimeSecond	Int		
+19	GetTimeMillisecond	Int		
+20	ActionRandomWalk	Void	Int	7
+21	ActionMoveToLocation	Void	EngineType,Int,Int	0|-1
+22	ActionMoveToObject	Void	Object,Int,Float,Int	0|1.0|-1
+23	ActionMoveAwayFromObject	Void	Object,Int,Float,Int	0|40.0|-1
+24	GetArea	Object	Object	
+25	GetEnteringObject	Object		
+26	GetExitingObject	Object		
+27	GetPosition	Vector	Object	
+28	GetFacing	Float	Object	
+29	Use	Int	Object,String,Object	OBJECT_INVALID
+30	GetIsItemPossessedBy	Int	Object,Int	
+31	GetFirstUse	String	Object	
+32	GetNextUse	String	Object	
+33	GetState	String	Object	
+34	GetCameraTagEntry	String		
+35	GetCameraTagReplies	String		
+36	PauseConversation	Void	Int,Object	1|OBJECT_SELF
+37	LockCombatTarget	Int	Object,Object	
+38	UnlockCombatTarget	Void	Object	
+39	SetConversationAutoFace	Void	Int	
+40	ActionPlayAnimation	Void	Int,Float,Float	1.0|0.0
+41	GetDistanceToObject	Float	Object	
+42	GetIsObjectValid	Int	Object	
+43	ActionOpenDoor	Void	Object	
+44	ActionCloseDoor	Void	Object	
+45	SetCameraFacing	Void	Float	
+46	PlaySound2D	Void	String	
+47	PlaySound3D	Void	String	
+48	PlaySoundAtPosition	Void	String,Vector	
+49	GetHealth	Int	Object	OBJECT_SELF
+50	GetMaxHealth	Int	Object	OBJECT_SELF
+51	GetLocalInt	Int	Object,Int	
+52	GetLocalFloat	Float	Object,Int	
+53	ZZ_HIDDEN_GetLocalString	String	Object,Int	
+54	GetLocalObject	Object	Object,Int	
+55	SetLocalInt	Void	Object,Int,Int	
+56	SetLocalFloat	Void	Object,Int,Float	
+57	ZZ_HIDDEN_SetLocalString	Void	Object,Int,String	
+58	SetLocalObject	Void	Object,Int,Object	
+59	GetStringLength	Int	String	
+60	GetStringUpperCase	String	String	
+61	GetStringLowerCase	String	String	
+62	GetStringRight	String	String,Int	
+63	GetStringLeft	String	String,Int	
+64	InsertString	String	String,String,Int	
+65	GetSubString	String	String,Int,Int	
+66	FindSubString	Int	String,String	
+67	fabs	Float	Float	
+68	cos	Float	Float	
+69	sin	Float	Float	
+70	tan	Float	Float	
+71	acos	Float	Float	
+72	asin	Float	Float	
+73	atan	Float	Float	
+74	log	Float	Float	
+75	pow	Float	Float,Float	
+76	sqrt	Float	Float	
+77	abs	Int	Int	
+78	RemoveCombatStyle	Void	Object,Int	
+79	PlaySoundSet	Void	String	
+80	EffectAbilityIncrease	EngineType	Int,Int	
+81	GetIsSpeedLoadMode	Int		
+82	EffectResurrection	EngineType	Int	0
+83	GetGoreSetting	Int		
+84	SetCreatureMaterial	Int	Object,String	
+85	GetFirstEffect	EngineType	Object	
+86	GetNextEffect	EngineType	Object	
+87	RemoveEffect	Void	Object,EngineType,Int,String	-1|"-1"
+88	GetIsEffectValid	Int	EngineType	
+89	GetEffectDurationType	Int	EngineType	
+90	GetEffectSubType	Int	EngineType	
+91	GetEffectCreator	Object	EngineType	
+92	IntToString	String	Int	
+93	RestoreCreatureMaterial	Void	Object	
+94	ClearDelayCommands	Void	Object	
+95	d2	Int	Int	1
+96	d3	Int	Int	1
+97	d4	Int	Int	1
+98	d6	Int	Int	1
+99	d8	Int	Int	1
+100	d10	Int	Int	1
+101	d12	Int	Int	1
+102	d20	Int	Int	1
+103	d100	Int	Int	1
+104	VectorMagnitude	Float	Vector	
+105	ConsoleCommand	Void	String	
+106	GetObjectType	Int	Object	
+107	StoreFXStates	Int		
+108	RestoreFXStates	Int	Float,Int	1.0|0
+109	GetAppearance	Int	Object	
+110	SignalWait	Void	Object,Int	1
+111	SetUnselectable	Void	Object,Int	
+112	SetConversationOwnerForCamera	Void	Object	
+113	GetConversationNumber	Int	Object	OBJECT_SELF
+114	GetConversationOwnerForCamera	Object		
+115	GetCutsceneFromScriptCommand	Int		
+116	GetPlayerConversationOwner	Object		
+117	GetObjectConversationResref	String	Object	
+118	SetAppearance	Void	Object,Int,Int	-1
+119	GetHeadType	Int	Object	
+120	GetInCutsceneMode	Int		
+121	RoundsToSeconds	Float	Int	
+122	HoursToSeconds	Float	Int	
+123	TurnsToSeconds	Float	Int	
+124	SetGoodEvilValue	Void	Object,Int	
+125	GetGoodEvilValue	Int	Object	
+126	ArtPlaceableGetPreviousState	String	Object	
+127	ZZ_CUT_GetAlignmentGoodEvil	Int	Object	
+128	GetFirstObjectInShape	Object	EngineType,Int,Float,Int,Int,Vector	0|kObjectTypeCreature|[0.0,0.0,0.0]
+129	GetNextObjectInShape	Object	EngineType,Int,Float,Int,Int,Vector	0|kObjectTypeCreature|[0.0,0.0,0.0]
+130	SetOnClickedDeadTime	Void	Int	
+131	SignalEvent	Void	Object,EngineType	
+132	EventUserDefined	EngineType	Int	
+133	StopConversation	Void		
+134	GetTagOfAreaFrom	String		
+135	ActionGiveItem	Void	Object,String	
+136	ActionTakeItem	Void	Object,String	
+137	VectorNormalize	Vector	Vector	
+138	GetCombatStyleLevel	Int	Object,Int	
+139	GetAbilityScore	Int	Object,Int	
+140	GetIsDead	Int	Object	
+141	PrintVector	Void	Vector,Int	
+142	Vector	Vector	Float,Float,Float	0.0|0.0|0.0
+143	SetFacingPoint	Void	Vector,Int,Object,Int	0|OBJECT_SELF|0
+144	AngleToVector	Vector	Float	
+145	VectorToAngle	Float	Vector	
+146	SetLookAtObject	Void	Object,Object	
+147	StartMinigame	Void	Int,String,String	
+148	ClearCombatAnimations	Void	Object	
+149	CreateGroundPile	Void	Int,EngineType	
+150	DisableHexgrid	Void	Object,Int	
+151	GetDistanceBetween	Float	Object,Object	
+152	ZZ_HIDDEN_SetLocalLocation	Void	Object,Int,EngineType	
+153	ZZ_HIDDEN_GetLocalLocation	EngineType	Object,Int	
+154	IsCreatureInViewVolume	Int	EngineType,Object	OBJECT_INVALID
+155	GetMGStats	Int	Int	
+156	SetHealth	Void	Object,Int	
+157	GetGemInAmulet	Int	Int	
+158	SetFloatingTextAlpha	Void	Float	
+159	GetPriorActivation	Int	Object	
+160	ActionSetFacing	Void	Object,Int	0
+161	GetBuildType	Int		
+162	SetCommandable	Void	Int,Object	OBJECT_SELF
+163	GetCommandable	Int	Object	OBJECT_SELF
+164	EnableOrientationChanges	Void	Object,Int	
+165	EffectMovementSpeedIncrease	EngineType	Int	
+166	Cutscene_PropLoad	Void	String,String	
+167	ActionFollowCreature	Void	Object,Float	0.0
+168	GetTag	String	Object	
+169	Cutscene_PropUnload	Void	String	
+170	GetEffectType	Int	EngineType	
+171	GetTimePlayed	Int		
+172	Cutscene_PropAttach	Void	String,String,String	
+173	ChangeFaction	Void	Object,Object	
+174	CreateItem	Void	Object,Int,Int	
+175	DestroyItem	Void	Object,Int,Int	
+176	TransferItem	Void	Object,Object,Int,Int	
+177	Cutscene_PropDetach	Void	String	
+178	Cutscene_PropSetPosition	Void	String,Vector	
+179	Cutscene_PropSetOrientation	Void	String,Vector	
+180	Cutscene_PropPlayAnimation	Void	String,String,Int	0
+181	Cutscene_Start	Void	Object,Int,Float,Float,Int	OBJECT_INVALID|1|-1.0|-1.0|0
+182	Cutscene_End	Void	Int,Int	1|1
+183	Cutscene_TargetPosition	Void	Vector,Float,Int	0
+184	Cutscene_TargetObject	Void	Object,Float,Float,Int,Int	0.0|0|0
+185	Cutscene_MoveToPosition	Void	Vector,Float,Float,Int,Int	0|0
+186	Cutscene_MoveToObject	Void	Object,Float,Float,Int,Int	0|0
+187	Cutscene_OrbitPosition	Void	Vector,Float	
+188	Cutscene_OrbitObject	Void	Object,Float	
+189	Cutscene_PlayAnimation	Void	String,String	
+190	Cutscene_Truck	Void	Float,Float,Int,Int	0|0
+191	Cutscene_Dolly	Void	Float,Float,Int,Int	0|0
+192	Cutscene_Boom	Void	Float,Float,Int,Int	0|0
+193	Cutscene_Pan	Void	Float,Float,Int,Int	0|0
+194	Cutscene_Tilt	Void	Float,Float,Int,Int	0|0
+195	GetLoadedFromAreaTransition	Int		
+196	ActionJumpToObject	Void	Object,Int	1
+197	GetWaypointByTag	Object	String	
+198	GetTransitionTarget	Object	Object	
+199	EffectLinkEffects	EngineType	EngineType,EngineType	
+200	GetObjectByTag	Object	String,Int	0
+201	Cutscene_Roll	Void	Float,Float,Int,Int	0|0
+202	ActionWait	Void	Float,Int	0
+203	SetAreaTransitionMovie	Void	Int	
+204	ActionStartConversation	Void	Object,String,Int,Int,Int,Int,Int	""|0|0|1|0|1
+205	ActionPauseConversation	Void	Int,Object	1|OBJECT_SELF
+206	ActionResumeConversation	Void	Int	1
+207	GetObjectScript	String	Object,Int	
+208	ShowAreaTransGui	Void	Int,Int	
+209	ApplyVisualEffectToObject	Void	Object,Int,Int	0
+210	Cutscene_Zoom	Void	Float,Float,Int,Int	0|0
+211	Cutscene_ClearTarget	Void		
+212	SetUserDefinedEventNumber	Void	Object,Int	
+213	GetLocation	EngineType	Object	
+214	ActionJumpToLocation	Void	EngineType,Int	1
+215	Location	EngineType	Object,Vector,Float	
+216	ApplyVisualEffectAtLocation	Void	EngineType,Int,Int	0
+217	GetIsPC	Int	Object	
+218	FeetToMeters	Float	Float	
+219	YardsToMeters	Float	Float	
+220	ApplyEffectToObject	Void	Object,Int,EngineType,Float	0.0
+221	Cutscene_StopOrbit	Void		
+222	GetSpellTargetLocation	EngineType		
+223	GetPositionFromLocation	Vector	EngineType	
+224	ZZ_CUT_GetAreaFromLocation	Object	EngineType	
+225	GetFacingFromLocation	Float	EngineType	
+226	MGConfirmation	Void	Int,String,String,String	
+227	GetNearestObject	Object	Object,Int,Int	OBJECT_SELF|kObjectTypeCreature|0
+228	GetNearestObjectToLocation	Object	EngineType,Int,Int	0
+229	UnlockMGGroup	Void	Int	
+230	IntToFloat	Float	Int	
+231	FloatToInt	Int	Float	
+232	StringToInt	Int	String	
+233	StringToFloat	Float	String	
+234	ActionCastSpell	Void	Object,Int,Int	0
+235	GetIsEnemy	Int	Object,Object	OBJECT_SELF
+236	GetIsFriend	Int	Object,Object	OBJECT_SELF
+237	GetIsNeutral	Int	Object,Object	OBJECT_SELF
+238	Cutscene_Stop	Void		
+239	GetStringByStrRef	String	Int	
+240	ActionSpeakStringByStrRef	Void	Int	
+241	DestroyObject	Void	Object,Float	0.0
+242	Cutscene_SetZoom	Void	Float,Float,Int,Int	0|0
+243	CreateObject	Object	Int,String,EngineType	
+244	EventSpellCastAt	EngineType	Object,Int,Int	1
+245	Cutscene_SetOrientation	Void	Vector,Float,Int	0
+246	Cutscene_LoadCamera	Void	Object,Float,Int,Int	0.0|0|0
+247	GetUserDefinedEventNumber	Int		
+248	GetSpellId	Int		
+249	RandomName	String		
+250	EffectPoison	EngineType	Int	
+251	GetBuildNumber	Int		
+252	GetOneLinerSpeaker	Object		
+253	Cutscene_CameraAnimation	Void	String,String,Float,Int,Int	0.0|0|0
+254	GetLastSpeaker	Object		
+255	BeginConversation	Int	Object,String	OBJECT_INVALID|""
+256	Cutscene_StuntAnimation	Void	Object,String,String,Int,Int,Int,Float	0|0|0|1.0
+257	Cutscene_DialogShot	Void	Int,Int,Int,Float,Int,Object,Object,Int,Int	0.0|0|OBJECT_INVALID|OBJECT_INVALID|0|0
+258	Cutscene_StuntSetPosition	Void	Object,Vector	
+259	Cutscene_StuntSetOrientation	Void	Object,Vector	
+260	GetOwner	Object	Object	OBJECT_SELF
+261	AcquireHenchmanStore	Void		
+262	GetFirstInObject	Object	Object,Int,Int	OBJECT_SELF|kObjectTypeCreature|0
+263	GetNextInObject	Object	Object,Int,Int	OBJECT_SELF|kObjectTypeCreature|0
+264	ZZ_CUT_GetAreaOfEffectCreator	Object	Object	OBJECT_SELF
+265	DeleteLocalInt	Void	Object,Int	
+266	ZZ_CUT_RemoveHenchman	Void	Object,Object	OBJECT_SELF
+267	DeleteLocalString	Void	Object,Int	
+268	DeleteLocalObject	Void	Object,Int	
+269	DeleteLocalLocation	Void	Object,Int	
+270	ZY_EFFECT_EffectHaste	EngineType		
+271	ZY_EFFECT_EffectSlow	EngineType		
+272	ObjectToString	String	Object	
+273	ZY_EFFECT_EffectImmunity	EngineType	Int	
+274	ZY_EFFECT_GetIsImmune	Int	Object,Int,Object	OBJECT_INVALID
+275	ZY_EFFECT_EffectDamageImmunityIncrease	EngineType	Int,Int	
+276	GetCharm	Int	Object	
+277	SetCharm	Void	Object,Int	
+278	GetIntimidate	Int	Object	
+279	SetIntimidate	Void	Object,Int	
+280	GetIntuition	Int	Object	
+281	SetIntuition	Void	Object,Int	
+282	SetCreatureEmotionalState	Void	Object,Int	
+283	GetCreatureEmotionalState	Int	Object	
+284	SetCustomToken	Void	Int,String	
+285	GetAILevel	Int	Object	
+286	SetAILevel	Void	Object,Int	
+287	SetObjectNoCollide	Void	Object,Int	
+288	ToggleHexGridPatch	Int	Object,Int	
+289	GetPlayerSeenByObject	Int	Object	OBJECT_SELF
+290	EnableDepthOfField	Void	Int	
+291	SetDepthOfField	Void	Float,Float,Object	OBJECT_INVALID
+292	SetHenchmanLockStrRef	Void	Int,Int	
+293	Cutscene_ForceAnimation	Void	Object,Int	
+294	ActionDoCommand	Void	ScriptState	
+295	EventConversation	EngineType		
+296	GetLastWorldMapDestination	String		
+297	PolymorphPlayerToHenchman	Void	Int	
+298	GetDistanceBetweenLocations	Float	EngineType,EngineType	
+299	SetHenchmanAppearance	Void	Int,Int	
+300	PlayAnimation	Void	Int,Float,Float	1.0|0.0
+301	Get2DAEntryIntByString	Int	Int,Int,String	
+302	Get2DAEntryFloatByString	Float	Int,Int,String	
+303	Get2DAEntryStringByString	String	Int,Int,String	
+304	GetHasSpellEffect	Int	Int,Object	OBJECT_SELF
+305	GetEffectSpellId	Int	EngineType	
+306	GetHenchmanAvailable	Int	Int,Int,Int	0|0
+307	SetHenchmanState	Void	Int,Int,Int	0
+308	GetHenchmanState	Int	Int,Int	0
+309	ActivateHenchman	Void	Int,Object,Int,Int	0|0
+310	SetLockCamera	Void	Int	
+311	DeactivateHenchman	Void	Int	
+312	SetHenchmanLevel	Void	Int,Int	
+313	JumpToLocation	Void	EngineType,Int	1
+314	ZY_EFFECT_EffectTemporaryHitpoints	EngineType	Int	
+315	GetHenchmanLevel	Int	Int	
+316	SetHenchmanCombatMode	Void	Int,Int	
+317	GetHenchmanCombatMode	Int	Int	
+318	GetStyleOfHarmonicCombo	Int	Object	OBJECT_SELF
+319	SaveCombatRetry	Void		
+320	GetIsInCombat	Int		
+321	LockCurrentHenchman	Void	Int	
+322	GiveGoldToPlayer	Void	Int,Int	1
+323	Cutscene_TargetMidpoint	Void	Object,Object,Float,Int	0
+324	SetLocked	Void	Object,Int	
+325	GetLocked	Int	Object	
+326	GetSelectedHenchman	Int		
+327	SetSelectedHenchman	Void	Int,Object,Object,Int,Int	OBJECT_INVALID|OBJECT_INVALID|0|0
+328	DeactivateAllHenchmen	Void		
+329	ActionInteractObject	Void	Object	
+330	GetLastUsedBy	Object		
+331	GetSelectedHenchmanSubtype	Int		
+332	Cutscene_EnableAllTriggers	Void	Int	
+333	Cutscene_LoadRim	Void	String	
+334	Cutscene_UnloadRim	Void	String	
+335	SetTravelGiver	Void	Object,Int	
+336	GetBlockingDoor	Object		
+337	GetIsDoorActionPossible	Int	Object,Int	
+338	DoDoorAction	Void	Object,Int	
+339	GetFirstItemInInventory	Int	Object	OBJECT_SELF
+340	GetNextItemInInventory	Int		
+341	GetClass	Int	Object	OBJECT_SELF
+342	Cutscene_DialogShotVerified	Int	Int,Int,Int,Float,Int,Object,Object,Int,Int	0.0|0|OBJECT_INVALID|OBJECT_INVALID|0|0
+343	GetLevel	Int	Object	OBJECT_SELF
+344	GetDamageDealtByType	Int	Int	
+345	GetTotalDamageDealt	Int		
+346	GetLastDamager	Object		
+347	GetLastDisarmed	Object		
+348	Cutscene_SetDialogShotConstraint	Void	Int	
+349	GetLastLockedBy	Object		
+350	GetLastUnlockedBy	Object		
+351	Cutscene_GetObjectHeight	Float	Object	
+352	Cutscene_GetDialogSide	Int		
+353	Cutscene_GetObjectAnim	Int	Object	
+354	Cutscene_GetSpeaker	Object		
+355	Cutscene_GetListener	Object		
+356	Cutscene_GetPosition	Vector		
+357	Cutscene_GetOrientation	Vector		
+358	GetGender	Int	Object	
+359	Cutscene_GetWaypointOrientation	Vector	Object	
+360	ActionMoveAwayFromLocation	Void	EngineType,Int,Float,Int	0|40.0|-1
+361	ZZ_COMBAT_GetAttemptedAttackTarget	Object		
+362	Cutscene_SetAnimScale	Void	Object,Float	
+363	Cutscene_WaitOnSoundReady	Void	Int	
+364	ZZ_CUT_GetAssociate	Object	Int,Object	OBJECT_SELF
+365	ZZ_CUT_AddHenchman	Void	Object,Object	OBJECT_SELF
+367	ZZ_CUT_AddJournalQuestEntry	Void	String,Int,Object,Int,Int,Int	1|0|0
+368	ZZ_CUT_RemoveJournalQuestEntry	Void	String,Object,Int,Int	1|0
+369	ZZ_CUT_GetPCPublicCDKey	String	Object	
+370	ZZ_CUT_GetPCIPAddress	String	Object	
+371	ZZ_CUT_GetPCPlayerName	String	Object	
+372	ZZ_CUT_SetPCLike	Void	Object,Object	
+373	ZZ_CUT_SetPCDislike	Void	Object,Object	
+374	ZZ_CUT_SendMessageToPC	Void	Object,String	
+375	ZZ_COMBAT_GetAttemptedSpellTarget	Object		
+376	GetLastOpenedBy	Object		
+377	DisplayFloatyFeedback	Void	Object,Int	
+378	OpenStore	Void	Object,Int,Int	-1|-1
+379	SetItemBuyPrice	Void	Object,Int,Int	
+380	SetItemSellPrice	Void	Object,Int,Int	
+381	GetItemBuyPrice	Int	Object,Int	
+382	ActionForceMoveToLocation	Void	EngineType,Int,Float,Int	0|30.0|-1
+383	ActionForceMoveToObject	Void	Object,Int,Float,Float,Int	0|1.0|30.0|-1
+384	GetJournalQuestExperience	Int	String	
+385	JumpToObject	Void	Object,Int	1
+386	SetMapPinEnabled	Void	Object,Int	
+387	GetItemSellPrice	Int	Object,Int	
+388	PopUpGUIPanel	Void	Object,Int	
+389	ZZ_CUT_ClearPersonalReputation	Void	Object,Object	OBJECT_SELF
+390	ZZ_COMBAT_SetIsTemporaryFriend	Void	Object,Object,Int,Float	OBJECT_SELF|0|180.0
+391	ZZ_COMBAT_SetIsTemporaryEnemy	Void	Object,Object,Int,Float	OBJECT_SELF|0|180.0
+392	ZZ_COMBAT_SetIsTemporaryNeutral	Void	Object,Object,Int,Float	OBJECT_SELF|0|180.0
+393	GiveXPToPlayer	Void	Int	
+394	SetXP	Void	Int	
+395	GetXP	Int		
+396	IntToHexString	String	Int	
+397	ZZ_CUT_GetBaseItemType	Int	Object	
+398	ZZ_CUT_GetItemHasItemProperty	Int	Object,Int	
+399	ZZ_CUT_ActionEquipMostDamagingMelee	Void	Object,Int	OBJECT_INVALID|0
+400	ZZ_CUT_ActionEquipMostDamagingRanged	Void	Object	OBJECT_INVALID
+401	ZZ_CUT_GetItemACValue	Int	Object	
+402	ZZ_CUT_ActionRest	Void		
+403	ExploreArea	Void		
+404	ZZ_CUT_ActionEquipMostEffectiveArmor	Void		
+405	GetIsDay	Int		
+406	GetIsNight	Int		
+407	GetIsDawn	Int		
+408	GetIsDusk	Int		
+409	GetIsEncounterCreature	Int	Object	OBJECT_SELF
+410	ZZ_CUT_GetLastPlayerDying	Object		
+411	ZZ_CUT_GetStartingLocation	EngineType		
+412	ChangeToStandardFaction	Void	Object,Int	
+413	SoundObjectPlay	Void	Object	
+414	SoundObjectStop	Void	Object	
+415	SoundObjectSetVolume	Void	Object,Int	
+416	SoundObjectSetPosition	Void	Object,Vector	
+417	SpeakOneLinerConversation	Void	String,Int	""|1
+418	GetGold	Int	Object	OBJECT_SELF
+419	GetItemAquired	Int		
+420	ZZ_CUT_GetIsDM	Void		
+421	ZZ_CUT_PlayVoiceChat	Void		
+422	ZZ_CUT_GetIsWeaponEffective	Int	Object,Int	OBJECT_INVALID|0
+423	ZZ_CUT_GetLastSpellHarmful	Int		
+424	ZZ_CUT_EventActivateItem	EngineType	Object,EngineType,Object	OBJECT_INVALID
+425	PauseSound	Void	Int	1
+426	DisableSoundSet	Void	Int,Object	OBJECT_INVALID
+427	DisableMusicStateChanges	Void	Int	1
+428	SetMusicState	Void	Int	
+429	GetMusicState	Int		
+430	SetAreaMusicState	Void	Int	
+431	StartCutsceneAudio	Void	String	
+432	ZZ_CUT_MusicBattleChange	Void	Object,Int	
+433	ZZ_CUT_AmbientSoundPlay	Void		
+434	ZZ_CUT_AmbientSoundStop	Void		
+435	ZZ_CUT_AmbientSoundChange	Void	Int	
+436	ZZ_CUT_AmbientSoundChangeNight	Void	Object,Int	
+437	GetLastKiller	Object		
+438	ZZ_CUT_GetSpellCastItem	Object		
+439	ZZ_CUT_GetItemActivated	Object		
+440	ZZ_CUT_GetItemActivator	Object		
+441	ZZ_CUT_GetItemActivatedTargetLocation	EngineType		
+442	ZZ_CUT_GetItemActivatedTarget	Object		
+443	GetIsOpen	Int	Object	
+444	TakeGoldFromPlayer	Void	Int	
+445	GetIsInConversation	Int	Object	
+446	EffectAbilityDecrease	EngineType	Int,Int	
+447	ZY_EFFECT_EffectAttackDecrease	EngineType	Int,Int	0
+448	ZY_EFFECT_EffectDamageDecrease	EngineType	Int,Int	0
+449	ZY_EFFECT_EffectDamageImmunityDecrease	EngineType	Int,Int	
+450	ZY_EFFECT_EffectACDecrease	EngineType	Int,Int,Int	0|4103
+451	EffectMovementSpeedDecrease	EngineType	Int	
+452	ZY_EFFECT_EffectSavingThrowDecrease	EngineType	Int,Int,Int	
+453	ZY_EFFECT_EffectSkillDecrease	EngineType	Int,Int	
+454	ZY_EFFECT_EffectForceResistanceDecrease	EngineType	Int	
+455	GetPlotFlag	Int	Object	OBJECT_SELF
+456	SetPlotFlag	Void	Object,Int	
+457	ZY_EFFECT_EffectInvisibility	EngineType	Int	
+458	ZY_EFFECT_EffectConcealment	EngineType	Int	
+459	ZY_EFFECT_EffectDarkness	EngineType		
+460	ZY_EFFECT_EffectDispelMagicAll	EngineType	Int	
+461	ZY_EFFECT_EffectElementalShield	EngineType		
+462	ZY_EFFECT_EffectLevelDrain	EngineType		
+463	ZY_EFFECT_EffectPolymorph	EngineType	Int	
+464	ZY_EFFECT_EffectSanctuary	EngineType		
+465	ZY_EFFECT_EffectTrueSeeing	EngineType		
+466	ZY_EFFECT_EffectSeeInvisible	EngineType		
+467	ZY_EFFECT_EffectTimeStop	EngineType		
+468	ZY_EFFECT_EffectBlindness	EngineType		
+469	ZZ_CUT_GetIsReactionTypeFriendly	Int		
+470	ZZ_CUT_GetIsReactionTypeNeutral	Int		
+471	ZZ_CUT_GetIsReactionTypeHostile	Int		
+472	ZY_EFFECT_EffectSpellLevelAbsorption	EngineType	Int,Int,Int	0|0
+473	ZY_EFFECT_EffectDispelMagicBest	EngineType	Int	
+474	ZZ_CUT_ActivatePortal	Void		
+475	GetItemCount	Int	Object,Int	
+476	SurrenderToEnemies	Void		
+477	ZY_EFFECT_EffectMissChance	EngineType	Int	
+478	ZZ_CUT_GetTurnResistanceHD	Int		
+479	GetCreatureSize	Int	Object	
+480	ZY_EFFECT_EffectDisappearAppear	EngineType		
+481	ZY_EFFECT_EffectDisappear	EngineType		
+482	ZY_EFFECT_EffectAppear	EngineType		
+483	ActionUnlockObject	Void	Object	
+484	ActionLockObject	Void	Object	
+485	ZY_EFFECT_EffectModifyAttacks	EngineType	Int	
+486	ZZ_CUT_GetLastTrapDetected	Object	Object	OBJECT_SELF
+487	ZY_EFFECT_EffectDamageShield	EngineType	Int,Int,Int	
+488	ZZ_CUT_GetNearestTrapToObject	Object	Object,Int	OBJECT_SELF|1
+489	ZZ_DELETED_44	Void		
+490	ZZ_DELETED_45	Void		
+491	ZZ_CUT_GetFortitudeSavingThrow	Int	Object	
+492	ZZ_CUT_GetWillSavingThrow	Int	Object	
+493	ZZ_CUT_GetReflexSavingThrow	Int	Object	
+494	ZZ_CUT_GetChallengeRating	Float	Object	
+495	ZZ_DELETED_46	Void		
+496	GetMovementRate	Int	Object	
+497	SetRegisteredScript	Void	String	
+498	GetRunningRegisteredScript	Int		
+499	GetHasStyle	Int	Object,Int	
+500	GetNumberOfStyles	Int	Object	
+501	GetStyle	Int	Object,Int	
+502	GetRoom	Int	Object	
+503	GetConversationResref	String	Object	
+504	SetCutSceneCameraMode	Void	Int	
+505	ZZ_DELETED_51	Void		
+506	ZZ_DELETED_52	Void		
+507	ZZ_DELETED_53	Void		
+508	ZZ_DELETED_54	Void		
+509	StartNewArea	Void	String,String	
+510	ZZ_DELETED_55	Void		
+511	ZZ_CUT_GetWeaponRanged	Int	Object	
+512	DoAutoSavePlotPoint	Void	String,String,Int	
+513	GetGameDifficulty	Int	Int	
+514	DoAutoSave	Void		
+515	ZZ_DELETED_57	Void		
+516	ZZ_DELETED_58	Void		
+517	ZZ_DELETED_59	Void		
+518	ZZ_DELETED_60	Void		
+519	ZZ_DELETED_61	Void		
+520	ZZ_DELETED_62	Void		
+521	ZZ_DELETED_63	Void		
+522	GetCurrentAction	Int	Object	OBJECT_SELF
+523	ZZ_DELETED_64	Void		
+524	ZZ_DELETED_65	Void		
+525	ZZ_CUT_FloatingTextStrRefOnCreature	Void	Int,Object,Int	1
+526	ZZ_CUT_FloatingTextStringOnCreature	Void	String,Object,Int	1
+527	ZZ_CUT_GetTrapDisarmable	Int	Object	
+528	ZZ_CUT_GetTrapDetectable	Int	Object	
+529	ZZ_CUT_GetTrapDetectedBy	Int	Object,Object	
+530	ZZ_CUT_GetTrapFlagged	Int	Object	
+531	ZZ_CUT_GetTrapBaseType	Int	Object	
+532	ZZ_CUT_GetTrapOneShot	Int	Object	
+533	ZZ_CUT_GetTrapCreator	Object	Object	
+534	ZZ_CUT_GetTrapKeyTag	String	Object	
+535	ZZ_CUT_GetTrapDisarmDC	Int	Object	
+536	ZZ_CUT_GetTrapDetectDC	Int	Object	
+537	GetLockKeyRequired	Int	Object	
+538	GetLockKeyItem	Int	Object	
+539	ZZ_CUT_GetLockLockable	Int	Object	
+540	ZZ_CUT_GetLockUnlockDC	Int	Object	
+541	ZZ_CUT_GetLockLockDC	Int	Object	
+542	ZZ_CUT_GetPCLevellingUp	Object		
+543	ZZ_CUT_GetHasFeatEffect	Int	Int,Object	OBJECT_SELF
+544	SetPlaceableIllumination	Void	Object,Int	OBJECT_SELF|1
+545	GetPlaceableIllumination	Int	Object	OBJECT_SELF
+546	GetIsPlaceableObjectActionPossible	Int	Object,Int	
+547	DoPlaceableObjectAction	Void	Object,Int	
+548	GetPlayer	Object		
+549	ZZ_CUT_GetNextPC	Object		
+550	ZZ_CUT_SetTrapDetectedBy	Int	Object,Object	
+551	ZZ_CUT_GetIsTrapped	Int	Object	
+552	ZZ_DELETED_66	Void		
+553	ZZ_DELETED_67	Void		
+554	PopUpDeathGUIPanel	Void	Object,Int,Int,Int,String	1|1|0|""
+555	ZZ_CUT_SetTrapDisabled	Void	Object	
+556	ZZ_COMBAT_GetLastHostileActor	Object	Object	OBJECT_SELF
+557	ZZ_CUT_ExportAllCharacters	Void		
+558	ZZ_CUT_MusicBackgroundGetTrack	Int	Object	
+559	ZZ_CUT_MusicBackgroundGetNightTrack	Int	Object	
+560	WriteTimestampedLogEntry	Void	String	
+561	ZZ_CUT_GetModuleName	String		
+562	ZZ_CUT_GetFactionLeader	Object	Object	
+563	ZZ_DELETED_68	Void		
+564	EndGame	Void	String	""
+565	GetRunScriptVar	Int		
+566	GetIsObjectInCombatMode	Int	Object	
+567	IgnoreCombatEndTransition	Void	Int	
+568	SetNoReactionAnimations	Void	Object,Int	
+569	ResetCombatInput	Void		
+570	ZZ_CUT_GetHasInventory	Int	Object	
+571	ZZ_CUT_GetStrRefSoundDuration	Float	Int	
+572	ZZ_CUT_AddToParty	Void	Object,Object	
+573	ZZ_CUT_RemoveFromParty	Void	Object	
+574	GetGlobalObject	Object	String	
+575	SetGlobalObject	Void	String,Object	
+576	ZZ_HIDDEN_GetGlobalString	String	String	
+577	ZZ_HIDDEN_SetGlobalString	Void	String,String	
+578	GetGlobalFloat	Float	String	
+579	SetGlobalFloat	Void	String,Float	
+580	GetGlobalInt	Int	String	
+581	SetGlobalInt	Void	String,Int	
+582	AurPostString	Void	String,Int,Int,Float	
+583	MG_GetLastEvent	String		
+584	MG_GetLastEventModelName	String		
+585	MG_GetObjectByName	Object	String	
+586	MG_PlayAnimation	Void	Object,String,Int,Int,Int	1|0|0
+587	MG_GetLastBulletHitDamage	Int		
+588	MG_GetLastBulletHitTarget	Int		
+589	MG_GetLastBulletHitShooter	Object		
+590	MG_AdjustFollowerHitPoints	Int	Object,Int,Int	0
+591	MG_OnBulletHit	Void		
+592	MG_OnObstacleHit	Void		
+593	MG_GetLastFollowerHit	Object		
+594	MG_GetLastObstacleHit	Object		
+595	MG_GetLastBulletFiredDamage	Int		
+596	MG_GetLastBulletFiredTarget	Int		
+597	MG_GetObjectName	String	Object	OBJECT_SELF
+598	MG_OnDeath	Void		
+599	MG_GetIsFollower	Int	Object	OBJECT_SELF
+600	MG_GetIsPlayer	Int	Object	OBJECT_SELF
+601	MG_GetIsEnemy	Int	Object	OBJECT_SELF
+602	MG_GetIsTrigger	Int	Object	OBJECT_SELF
+603	MG_GetIsObstacle	Int	Object	OBJECT_SELF
+604	MG_SetFollowerHitPoints	Void	Object,Int	
+605	MG_OnDamage	Void		
+606	MG_GetLastHPChange	Int		
+607	MG_RemoveAnimation	Void	Object,String	
+608	MG_GetCameraNearClip	Float		
+609	MG_GetCameraFarClip	Float		
+610	MG_SetCameraClip	Void	Float,Float	
+611	MG_GetPlayer	Object		
+612	MG_GetEnemyCount	Int		
+613	MG_GetEnemy	Object	Int	
+614	MG_GetObstacleCount	Int		
+615	MG_GetObstacle	Object	Int	
+616	MG_GetHitPoints	Int	Object	
+617	MG_GetMaxHitPoints	Int	Object	
+618	MG_SetMaxHitPoints	Void	Object,Int	
+619	MG_GetSphereRadius	Float	Object	
+620	MG_SetSphereRadius	Void	Object,Float	
+621	MG_GetNumLoops	Int	Object	
+622	MG_SetNumLoops	Void	Object,Int	
+623	MG_GetPosition	Vector	Object	
+624	MG_GetGunBankCount	Int	Object	
+625	MG_GetGunBankBulletModel	String	Object,Int	
+626	MG_GetGunBankGunModel	String	Object,Int	
+627	MG_GetGunBankDamage	Int	Object,Int	
+628	MG_GetGunBankTimeBetweenShots	Float	Object,Int	
+629	MG_GetGunBankLifespan	Float	Object,Int	
+630	MG_GetGunBankSpeed	Float	Object,Int	
+631	MG_GetGunBankTarget	Int	Object,Int	
+632	MG_SetGunBankBulletModel	Void	Object,Int,String	
+633	MG_SetGunBankGunModel	Void	Object,Int,String	
+634	MG_SetGunBankDamage	Void	Object,Int,Int	
+635	MG_SetGunBankTimeBetweenShots	Void	Object,Int,Float	
+636	MG_SetGunBankLifespan	Void	Object,Int,Float	
+637	MG_SetGunBankSpeed	Void	Object,Int,Float	
+638	MG_SetGunBankTarget	Void	Object,Int,Int	
+639	MG_GetLastBulletHitPart	String		
+640	MG_GetIsGunBankTargetting	Int	Object,Int	
+641	MG_GetPlayerOffset	Vector		
+642	MG_GetPlayerInvincibility	Float		
+643	MG_GetPlayerSpeed	Float		
+644	MG_GetPlayerMinSpeed	Float		
+645	MG_GetPlayerAccelerationPerSecond	Float		
+646	MG_GetPlayerTunnelPos	Vector		
+647	MG_SetPlayerOffset	Void	Vector	
+648	MG_SetPlayerInvincibility	Void	Float	
+649	MG_SetPlayerSpeed	Void	Float	
+650	MG_SetPlayerMinSpeed	Void	Float	
+651	MG_SetPlayerAccelerationPerSecond	Void	Float	
+652	MG_SetPlayerTunnelPos	Void	Vector	
+653	MG_GetPlayerTunnelNeg	Vector		
+654	MG_SetPlayerTunnelNeg	Void	Vector	
+655	MG_GetPlayerOrigin	Vector		
+656	MG_SetPlayerOrigin	Void	Vector	
+657	MG_GetGunBankHorizontalSpread	Float	Object,Int	
+658	MG_GetGunBankVerticalSpread	Float	Object,Int	
+659	MG_GetGunBankSensingRadius	Float	Object,Int	
+660	MG_GetGunBankInaccuracy	Float	Object,Int	
+661	MG_SetGunBankHorizontalSpread	Void	Object,Int,Float	
+662	MG_SetGunBankVerticalSpread	Void	Object,Int,Float	
+663	MG_SetGunBankSensingRadius	Void	Object,Int,Float	
+664	MG_SetGunBankInaccuracy	Void	Object,Int,Float	
+665	MG_GetIsInvulnerable	Int	Object	
+666	MG_StartInvulnerability	Void	Object	
+667	MG_GetPlayerMaxSpeed	Float		
+668	MG_SetPlayerMaxSpeed	Void	Float	
+669	ZZ_CUT_AddJournalWorldEntry	Void	Int,String,String	"World Entry"
+670	ZZ_CUT_AddJournalWorldEntryStrref	Void	Int,Int	
+671	BarkString	Void	Object,Int	
+672	BarkStringPlaying	Int	Object	
+673	ZZ_CUT_DeleteJournalWorldEntry	Void	Int	
+674	ZZ_CUT_DeleteJournalWorldEntryStrref	Void	Int	
+675	ZZ_CUT_EffectForceDrain	EngineType	Int	
+676	ZZ_CUT_EffectPsychicStatic	EngineType		
+677	ZZ_CUT_PlayVisualAreaEffect	Void	Int,EngineType	
+678	ZZ_CUT_SetJournalQuestEntryPicture	Void	String,Object,Int,Int,Int	1|0
+679	ZZ_CUT_GetLocalBoolean	Int	Object,Int	
+680	ZZ_CUT_SetLocalBoolean	Void	Object,Int,Int	
+681	ZZ_CUT_GetLocalNumber	Int	Object,Int	
+682	ZZ_CUT_SetLocalNumber	Void	Object,Int,Int	
+683	ZZ_CUT_MG_GetSoundFrequency	Int	Object,Int	
+684	ZZ_CUT_MG_SetSoundFrequency	Void	Object,Int,Int	
+685	ZZ_CUT_MG_GetSoundFrequencyIsRandom	Int	Object,Int	
+686	ZZ_CUT_MG_SetSoundFrequencyIsRandom	Void	Object,Int,Int	
+687	ZZ_CUT_MG_GetSoundVolume	Int	Object,Int	
+688	ZZ_CUT_MG_SetSoundVolume	Void	Object,Int,Int	
+689	ZZ_CUT_SoundObjectGetPitchVariance	Float	Object	
+690	ZZ_CUT_SoundObjectSetPitchVariance	Void	Object,Float	
+691	ZZ_CUT_SoundObjectGetVolume	Int	Object	
+692	ZZ_HIDDEN_GetGlobalLocation	EngineType	String	
+693	ZZ_HIDDEN_SetGlobalLocation	Void	String,EngineType	
+694	ZZ_CUT_AddAvailableNPCByObject	Int	Int,Object	
+695	ZZ_CUT_RemoveAvailableNPC	Int	Int	
+696	ZZ_CUT_GetIsAvailableCreature	Int	Int	
+697	ZZ_CUT_AddAvailableNPCByTemplate	Int	Int,String	
+698	ZZ_CUT_SpawnAvailableNPC	Object	Int,EngineType	
+699	ZZ_CUT_GetIsNPCPartyMember	Int	Int	
+700	ZZ_CUT_ActionBarkString	Void	Int	
+701	ZZ_CUT_GetIsConversationActive	Int		
+702	ZZ_CUT_EffectLightsaberThrow	EngineType	Object,Object,Object	OBJECT_INVALID|OBJECT_INVALID
+703	ZZ_CUT_EffectWhirlWind	EngineType		
+704	ZZ_CUT_SetPartyAIStyle	Void	Int	
+705	ZZ_CUT_SetNPCAIStyle	Void	Object,Int	
+706	ZZ_CUT_SetNPCSelectability	Void	Int,Int	
+707	ZZ_CUT_GetNPCSelectability	Int	Int	
+708	GetCurrentStyle	Int	Object	
+709	SetCurrentStyle	Void	Object,Int	
+710	ClearAllEffects	Void		
+711	GetLastConversation	String		
+712	GetFaction	Int	Object	
+713	GetStandardFaction	Int	Object	
+714	ZZ_CUT_GivePlotXP	Void	String,Int	
+715	GetMinimumHealth	Int	Object	
+716	SetMinimumHealth	Void	Object,Int	
+717	MG_GetPlayerTunnelInfinite	Vector		
+718	MG_SetPlayerTunnelInfinite	Void	Vector	
+719	ZZ_CUT_SetGlobalFadeIn	Void	Float,Float,Float,Float,Float	0.0|0.0|0.0|0.0|0.0
+720	ZZ_CUT_SetGlobalFadeOut	Void	Float,Float,Float,Float,Float	0.0|0.0|0.0|0.0|0.0
+721	ZZ_COMBAT_GetLastHostileTarget	Object	Object	OBJECT_SELF
+722	ZZ_COMBAT_GetLastAttackAction	Int	Object	OBJECT_SELF
+723	ZZ_CUT_GetLastForcePowerUsed	Int	Object	OBJECT_SELF
+724	ZZ_CUT_GetLastCombatFeatUsed	Int	Object	OBJECT_SELF
+725	ZZ_COMBAT_GetLastAttackResult	Int	Object	OBJECT_SELF
+726	ZZ_CUT_GetWasForcePowerSuccessful	Int	Object	OBJECT_SELF
+727	ZZ_COMBAT_GetFirstAttacker	Object	Object	OBJECT_SELF
+728	ZZ_COMBAT_GetNextAttacker	Object	Object	OBJECT_SELF
+729	ZZ_CUT_SetFormation	Void	Object,Object,Int,Int	
+730	ZZ_CUT_ActionFollowLeader	Void		
+731	ZZ_CUT_SetForcePowerUnsuccessful	Void	Int,Object	OBJECT_SELF
+732	ZZ_CUT_GetIsDebilitated	Int	Object	OBJECT_SELF
+733	PlayMovie	Void	String,String	""
+734	ZZ_CUT_SaveNPCState	Void	Int	
+735	ZZ_CUT_GetCategoryFromTalent	Int	EngineType	
+736	FadeScreen	Void	Int,Float,Float,Vector	
+737	PauseMovie	Void		
+738	StopMovie	Void		
+739	PlayMovieBlocking	Void	String,String	""
+740	ActionPlaySound2D	Void	String	
+741	ActionPlaySound3D	Void	String	
+742	ActionPlaySoundAtPosition	Void	String,Vector	
+743	LoadTaskGroup	Int	String,Int	
+744	GetTaskComplete	Int	String,Int,Int	
+745	GetTaskGroupComplete	Int	String,Int	
+746	EffectModifyHealth	EngineType	Int	
+747	EffectModifyFocus	EngineType	Int	
+748	EffectModifyChi	EngineType	Int	
+749	SetTaskComplete	Void	String,Int,Int	
+750	SetAreaFogColor	Void		
+751	GetIsLiveContentAvailable	Void	Int	
+752	ShowWorldMap	Void	String	
+753	GetAreaState	Int	String	
+754	SetAreaState	Void	String,Int	
+755	GetObjectActive	Int	Object	
+756	SetObjectActive	Void	Object,Int,Int,Int,Int,Int	-1|-1|-1|-1
+757	FailQuest	Void	String	
+758	GetPlayerCreatureCombatTarget	Object		
+759	SetCombatCounter	Void	Int	
+760	GetCombatCounter	Int		
+761	SetCombatTimerCurrent	Void	Int	
+762	SetCombatTimerFinish	Void	Int	
+763	SetCombatTimerOn	Void	Int,String	
+764	GetCombatTimerCurrent	Int		
+765	GetCombatTimerOn	Int		
+766	SetPosition	Int	Object,Vector	
+767	GetCombatTeam	Int	Object	
+768	SetCombatTeam	Void	Object,Int	
+769	GetAggressivenessValue	Int	Object	
+770	SetAggressivenessValue	Void	Object,Int	
+771	EffectDamageHealth	EngineType	Int	
+772	EffectDamageChi	EngineType	Int	
+773	EffectDamageFocus	EngineType	Int	
+774	EffectDamageDrunk	EngineType	Int	
+775	SetFactionReputation	EngineType	Int,Int,Int	
+776	GetGlobalBoolean	Int	String	
+777	SetGlobalBoolean	Void	String,Int	
+778	GetLocalBoolean	Int	Object,Int	
+779	SetLocalBoolean	Void	Object,Int,Int	
+780	EffectSlowed	EngineType	Int	
+781	EffectParalyzed	EngineType		
+782	EffectDazed	EngineType		
+783	EffectHealing	Void	Object	
+784	GetRecoveryTime	Int	Object	
+785	SetRecoveryTime	Void	Object,Int	
+786	SetQuestActive	Void	String,Int	
+787	GetQuestActive	Int	String	
+788	ZZ_CUT_CompleteQuest	Void	String	
+789	GetQuestComplete	Int	String	
+790	GetQuestFailed	Int	String	
+791	GetFavoredMove	Int	Object	
+792	SetFavoredMove	Void	Object,Int	
+793	GetCombatProbAttack	Float	Object	
+794	GetCombatProbBlock	Float	Object	
+795	GetCombatProbHeal	Float	Object	
+796	GetCombatProbMove	Float	Object	
+797	GetCombatProbSwitchStyle	Float	Object	
+798	GetCombatProbIdle	Float	Object	
+799	SetCombatProbabilities	Void	Object,Float,Float,Float,Float,Float,Float	
+800	GetAccumulationRatio	Float		
+801	GetFogColour	Vector		
+802	GetFogNear	Float		
+803	GetFogFar	Float		
+804	GetForceDistortion	Float		
+805	GetNoise	Float		
+806	GetOceanFresnel	Float		
+807	GetOceanHeight	Float		
+808	GetOceanWaveClip	Vector		
+809	GetOceanWaveHeight	Float	Int	
+810	GetOceanWaveOffset	Float	Int	
+811	GetOceanWaveFreq	Float	Int	
+812	GetOceanWaveDirX	Float	Int	
+813	GetOceanWaveDirY	Float	Int	
+814	GetPixelFlareThresholdColour	Vector		
+815	GetPixelFlareThresholdMaxScale	Float		
+816	GetSaturation	Float		
+817	GetWindDirection	Vector		
+818	GetWindVariation	Vector		
+819	SetAccumulationRatio	Void	Float	
+820	SetFogColour	Void	Vector	
+821	SetFogNear	Void	Float	
+822	SetFogFar	Void	Float	
+823	SetForceDistortion	Void	Float	
+824	SetNoise	Void	Float	
+825	SetOceanFresnel	Void	Float	
+826	SetOceanHeight	Void	Float	
+827	SetOceanWaveClip	Void	Float,Float	
+828	SetOceanWaveHeight	Void	Int,Float	
+829	SetOceanWaveOffset	Void	Int,Float	
+830	SetOceanWaveFreq	Void	Int,Float	
+831	SetOceanWaveDirX	Void	Int,Float	
+832	SetOceanWaveDirY	Void	Int,Float	
+833	SetPixelFlareThresholdColour	Void	Vector	
+834	SetPixelFlareThresholdMaxScale	Void	Float	
+835	SetSaturation	Void	Vector,Float	
+836	SetWindDirection	Void	Vector	
+837	SetWindVariation	Void	Float,Float	
+838	AnimateAccumulationRatio	Void	Float,Float,Int	0
+839	AnimateFogColour	Void	Float,Float,Float,Float,Int	0
+840	AnimateFogNear	Void	Float,Float,Int	0
+841	AnimateFogFar	Void	Float,Float,Int	0
+842	AnimateForceDistortion	Void	Float,Float,Int	0
+843	AnimateNoise	Void	Float,Float,Int	0
+844	AnimateOceanFresnel	Void	Float,Float,Int	0
+845	AnimateOceanHeight	Void	Float,Float,Int	0
+846	AnimateOceanWaveClip	Void	Float,Float,Float,Int	0
+847	AnimateOceanWaveHeights	Void	Float,Float,Float,Float,Float,Int	0
+848	AnimateOceanWaveOffsets	Void	Float,Float,Float,Float,Float,Int	0
+849	AnimateOceanWaveFreqs	Void	Float,Float,Float,Float,Float,Int	0
+850	AnimateOceanWaveDirX	Void	Float,Float,Float,Float,Float,Int	0
+851	AnimateOceanWaveDirY	Void	Float,Float,Float,Float,Float,Int	0
+852	AnimatePixelFlareThreshold	Void	Float,Float,Float,Float,Float,Int	0
+853	AnimateSaturation	Void	Float,Float	
+854	AnimateWindDirection	Void	Float,Float,Float,Float,Float,Int	0
+855	AnimateWindVariation	Void	Float,Float,Float,Int	0
+856	AnimateRestoreRoomDefaults	Void	Float,Int	0
+857	Create2DAEffect	EngineType	Int,String,Int	0
+858	Create2DAEffectByLabel	EngineType	String,String	
+859	Get2DAEntryString	String	Int,Int,Int	
+860	Get2DAEntryFloat	Float	Int,Int,Int	
+861	Get2DAEntryInt	Int	Int,Int,Int	
+862	GetUseDefaultStyleAI	Int	Object	
+863	SetUseDefaultStyleAI	Void	Object,Int	
+864	GetCombatTemplate	Int	Object	
+865	SetCombatTemplate	Void	Object,Int	
+866	GetObtainPowerUp	Int	Object	
+867	SetObtainPowerUp	Void	Object,Int	
+868	ApplyEffectInRadius	Void	EngineType,Int,EngineType,Float,Float,Int	0
+869	SetCombatCounterOn	Void	Int	
+870	AddCombatStyle	Void	Object,Int,Int,Int,Int	1|0|1
+871	AddCombatStylePoints	Void	Object,Int	
+872	SetCombatAreaActive	Void	Object,Int	1
+873	SetCombatAreaEnterable	Void	Object,Int	1
+874	SetCombatAreaExitable	Void	Object,Int	1
+875	AddCombatAreaParticipant	Void	Object,Object	
+876	RemoveCombatAreaParticipant	Void	Object,Object	
+877	AddCombatAreaTeam	Void	Object,Int	
+878	RemoveCombatAreaTeam	Void	Object,Int	
+879	SetCombatAreaInvulnerable	Void	Object,Int	1
+880	SetCombatAreaCutsceneMode	Void	Object,Int	1
+881	GetCombatAreaParticipantByIndex	Object	Object,Int	0
+882	GetCombatAreaTotalParticipants	Int	Object	
+883	GetCombatAreaActive	Int	Object	
+884	GetIsObjectInCombatArea	Int	Object,Object	
+885	GetCombatAreaParticipantByTag	Object	Object,String	
+886	EffectModifyHealthBase	EngineType	Int	
+887	EffectModifyChiBase	EngineType	Int	
+888	EffectModifyFocusBase	EngineType	Int	
+889	EffectModifyDrunkBase	EngineType	Int	
+890	SetCombatAreaCombatOverride	Void	Object,Int	
+891	SetAmuletState	Void	Int	
+892	GetIsLastParticipantInCombatArea	Int	Object	
+893	GetCombatAreaNoQuestXP	Int	Object	
+894	SetCombatAreaNoQuestXP	Void	Object,Int	
+895	SetCombatAreaNoRewards	Void	Object,Int	
+896	SetObjectUntargettable	Void	Object,Int	
+897	ShowScoreBoard	Void	Int	
+898	GetScoreBoardPosition	Int	Int,Int	
+899	WriteToScoreBoard	Void	Int,String,Int	
+900	ShowChapterScreen	Void	Int,Int,String,Float,Int,String,Int,Vector,Int,Vector,Int,String	0|[0.0,0.0,0.0]|0|[0.0,0.0,0.0]|0|""
+901	GetTaskGroupActive	Int	String,Int	
+902	SetCreatureHalfShadow	Void	Object	
+903	SetCreatureFullShadow	Void	Object	
+904	SetAllCreaturesHalfShadow	Void		
+905	LoadAMPFile	Int	String	
+906	ClearAMPSettings	Void		
+907	GetMaxChi	Int	Object	OBJECT_SELF
+908	GetMaxFocus	Int	Object	OBJECT_SELF
+909	GetChi	Int	Object	OBJECT_SELF
+910	GetFocus	Int	Object	OBJECT_SELF
+911	GetFocusTime	Int	Object	OBJECT_SELF
+912	GetFocusPackets	Float	Object	OBJECT_SELF
+913	GetMaxFocusTime	Int	Object	OBJECT_SELF
+914	GetMaxFocusPackets	Float	Object	OBJECT_SELF
+915	GetInitialCombatCameraAngle	Float	Object	OBJECT_SELF
+916	SetInitialCombatCameraAngle	Int	Object,Float	
+917	SetLoadHintOverride	Void	Int	
+918	SplashScreens	Void	String	
+919	SetInvulnerable	Void	Object,Int	
+920	SetDeathHintOverride	Void	Int	
+921	RemoveFromAllCombatAreas	Void	Object	
+922	StartSpeedBlur	Void		
+923	EndSpeedBlur	Void		
+924	MapStyleToQuickSlot	Void	Int,Int	
+925	GetAvoidCombatState	Int	Object,Int	
+926	SetAvoidCombatState	Int	Object,Int,Int	
+927	EffectDeath	EngineType	Int	0
+928	GetArtPlaceableTransparent	Int	Object	
+929	SetArtPlaceableTransparent	Int	Object,Int	
+930	SetDisableCombatAI	Void	Int	
+931	SetGameSpeed	Void	Float	
+932	SetDecalTint	Void	Object,Vector	
+933	ShowFloaties	Void	Int	
+934	ClearScoreBoard	Void	Int	
+935	SetDisableCreatureCombatAI	Void	Object,Int	
+936	UpdateScriptedProgressString	Void	Int,Int	
+937	RemoveScriptedProgressString	Void	Int	
+938	SetRomanceIndex	Void	Int	
+939	GetCurrentCombatArea	Object	Object,Int,Int	1
+940	PlayCombatAnimation	Int	Object,Int,Int,Int,Int	1|0
+941	GetAttackPattern	Int	Object	
+942	SetAttackPattern	Int	Object,Int	
+943	ShowAmuletGui	Void	String	""
+944	ShowDialogBox	Void	Int,Int,String,String	
+945	ShowHint	Void	Int,Float	
+946	EffectEvade	EngineType	Object,Int	1
+947	ShowTutorial	Void	Int,Int,String	""
+948	ShowRewardScreen	Void	Int,Int,Int,String	0|0|""
+949	CreateCrustEffect	Void	Object,Int,Int	
+950	FinishCrustEffect	Void	Object,Int	
+951	DestroyCrustEffect	Void	Object,Int	
+952	ShowGroundPiles	Void	Int	
+953	GetE3Num	Int		
+954	SetCombatStyleShoutOverride	Void	Int	
+955	ResetCamera	Void		
+956	OverrideBodyMaterial	Int	Object,Int	
+957	OverrideHeadMaterial	Int	Object,Int	
+958	AnimateBrightening	Int	String,Float	
+959	GetRandomRewardXP	Int	Object	
+960	GetRandomRewardSilver	Int	Object	
+961	GetRandomRewardTreasure	Int	Object	
+962	GetRandomRewardMaxItem	Int	Object	
+963	GetRandomRewardPowerUpClass	String	Object	
+964	GetRandomRewardPowerUpChance	Int	Object	
+965	GetRandomRewardWeight	Int	Object	
+966	GetRandomRewardRefreshOnActivate	Int	Object	
+967	GetRandomRewardWeightOverload	Int	Object	
+968	GetRandomRewardActive	Int	Object	
+969	SetRandomRewardXP	Void	Object,Int	
+970	SetRandomRewardSilver	Void	Object,Int	
+971	SetRandomRewardTreasure	Void	Object,Int	
+972	SetRandomRewardMaxItem	Void	Object,Int	
+973	SetRandomRewardPowerUpClass	Void	Object,String	
+974	SetRandomRewardPowerUpChance	Void	Object,Int	
+975	SetRandomRewardWeight	Void	Object,Int	
+976	SetRandomRewardRefreshOnActivate	Void	Object,Int	
+977	SetRandomRewardWeightOverload	Void	Object,Int	
+978	SetRandomRewardActive	Void	Object,Int	
+979	FadeObjectAlpha	Int	Object,Float,Float	
+980	PerformStyleMove	Int	Object,Object,Int,Int,Int,Int,Float,Int	-1|-1|0|100.0|1
+981	CreateRandomReward	Void	Object,Int	
+982	CreateRandomRewardTag	Void	Object,Int,String	
+983	GetCombatNeutralBehavior	Int	Object	
+984	SetCombatNeutralBehavior	Void	Object,Int	
+985	GetLastDamagerStyle	Int	Object	
+986	DisableAllCombatButtons	Void		
+987	EnableAllCombatButtons	Void		
+988	ChangeCombatButtonState	Void	Int,Int	
+989	ApplyStyleAdvanceLine	Void	Object,Int,Int	
+990	CleanCutsceneMoveQueue	Void		
+991	PerformStyleMoveNoQueue	Int	Object,Object,Int,Int,Int,Int,Float,Int	-1|-1|0|100.0|0
+992	ZZ_GetPlayerCreatureAlignment	Int		
+993	ZZ_SetPlayerCreatureAlignment	Void	Int	
+994	SetTutorialMode	Void	Int	
+995	SetMonitoredButton	Void	Int	
+996	GetChapter	Int		
+997	SetChapter	Void	Int	
+998	GetTutorialMode	Int		
+999	SetNoiseTexture	Void	String	
+1000	ToggleNoise	Void	Int	
+1001	CombatAreaSubCombatEnd	Void	Object	
+1002	OceanEnable	Void	Int	
+1003	LockCurrentStyle	Void	Int	
+1004	GetOverrideCombatStance	Int	Object	
+1005	SetOverrideCombatStance	Void	Object,Int	
+1006	SetCreatureIllumination	Void	Object,Vector,Float	
+1007	RestoreCreatureIllumination	Void	Object	
+1008	GetUseDefaultDeathType	Int	Object	
+1009	SetUseDefaultDeathType	Void	Object,Int	
+1010	CombatMoveCreature	Void	Object,Object,Int,Float,Int,Vector	-1|[0.0,0.0,0.0]
+1011	SetCreatureSpeed	Void	Object,Float,Int	1
+1012	SetMiniMapMode	Void	Int	
+1013	SetOverrideEffectDuration	Void	EngineType,Float	
+1014	GetCreatureRank	Int	Object	
+1015	Get2DANumRows	Int	Int	
+1016	Get2DANumColumn	Int	Int	
+1017	SetCombatCollision	Void	Object,Int	
+1018	LogMemory	Void		
+1019	SetHenchmanPortraitType	Void	Int,Int	
+1020	SetResistanceOverride	Void	Object,Int	
+1021	GetResistanceOverride	Int	Object	
+1022	GetPlotGiver	Int	Object	
+1023	SetPlotGiver	Void	Object,Int	
+1024	ToggleDistortion	Void	Int	
+1025	ShowGuiRing	Void	Int,String	
+1026	SetSepiaEffect	Void	Int,Int	
+1027	SetFogOfWarExplored	Void	Vector,Int	
+1028	ResetTaskGroup	Int	String,Int	
+1029	AddKnownRecipe	Void	Int	
+1030	AttachObjectToObject	Int	Object,Object,String	
+1031	DetachObject	Void	Object	
+1032	RemoveFogOfWarFromCurrentArea	Void		
+1033	PlayAnimationAdvanced	Void	Int,Float,Float,Float,Int	1.0|0.0|0.0|0
+1034	GetFileExists	Int	String,Int	
+1035	AllowQuickTravel	Void	Int	
+1036	GetStyleType	Int	Int	
+1037	GetAutoBalance	Int	Object	
+1038	RemoveQuest	Int	String	
+1039	GetLastHostileAttacker	Object		
+1040	SaveVisibilityGraph	Int		
+1041	RestoreVisibiltyGraph	Int		
+1042	PreloadRoom	Int	String	
+1043	UnloadRoom	Int	String	
+1044	PlaceableCastSpell	Int	Object,Object,Vector,Int,Int,Int	
+1045	SetHenchmanFollowPlayerInCombat	Void	Int,Int	
+1046	SetChi	Void	Object,Int	
+1047	GetSystemTime	Int		
+1048	HaveSaveGames	Int		
+1049	GetUnspentStylePoints	Int		
+1050	GetUnspentAttributePoints	Int		
+1051	SetStayTransformed	Void	Object,Int	
+1052	SetDoNotEnterCombatArea	Void	Object,Int	
+1053	SetCombatVFXOverride	Void	Object,Int	
+1054	TransformHenchman	Void	Int,Int	
+1055	DisableEvade	Void	Int	
+1056	GetIsInFocus	Int	Object	OBJECT_SELF
+1057	SetIsInPOPBattle2	Int	Int	
+1058	CreateJadeMasterSave	Void		

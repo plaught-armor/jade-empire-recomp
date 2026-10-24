@@ -1,0 +1,21 @@
+# Only the port's own sources, tools and docs are tracked. The game, its
+# unpacked exe and the recompiled code (port/src/rec, generated from your own
+# copy of the exe: README.md) never go in.
+/*
+!/.gitignore
+!/LICENSE
+!/README.md
+!/docs/
+!/tools/
+!/re/
+/re/ghidra_snapshot.rea
+!/port/
+/port/*
+!/port/src/
+/port/src/rec/
+!/port/build.sh
+!/port/build_windows.sh
+!/port/play.sh
+!/port/play.bat
+__pycache__/
+/tools/fontbake/fontbake

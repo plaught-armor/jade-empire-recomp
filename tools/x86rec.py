@@ -892,7 +892,7 @@ def host_pops(img, src=HLE_SRC):
     for name in sorted(os.listdir(src)):
         if not name.endswith(".odin"):
             continue
-        lines = open(os.path.join(src, name)).read().split("\n")
+        lines = open(os.path.join(src, name), encoding="utf-8").read().split("\n")
         for m in re.finditer(r'\{"([a-z0-9_.]+![^"]+)", *([A-Za-z0-9_]+)\}', "\n".join(lines)):
             table[m.group(1)] = m.group(2)
         cur = None
@@ -3021,7 +3021,7 @@ def body_name(f, names):
 def load_names(path):
     """{address: name} from re/funcnames.txt."""
     names = {}
-    for l in open(path):
+    for l in open(path, encoding="utf-8"):
         if l.startswith("0x"):
             a, n = l.split()[:2]
             assert re.fullmatch(r"[A-Za-z]\w*", n), "not an Odin identifier: " + l
@@ -3045,7 +3045,7 @@ def inline_helpers(x86_dir):
     for fn in sorted(os.listdir(x86_dir)):
         if not fn.endswith(".odin"):
             continue
-        lines = open(os.path.join(x86_dir, fn)).read().split("\n")
+        lines = open(os.path.join(x86_dir, fn), encoding="utf-8").read().split("\n")
         i = 0
         while i < len(lines):
             m = TOP_DECL.match(lines[i])
@@ -3085,7 +3085,7 @@ def native_procs(native_dir):
     out = {}
     for fn in sorted(os.listdir(native_dir)):
         if fn.endswith(".odin"):
-            for m in NATIVE_HEAD.finditer(open(os.path.join(native_dir, fn)).read()):
+            for m in NATIVE_HEAD.finditer(open(os.path.join(native_dir, fn), encoding="utf-8").read()):
                 out[int(m.group(2), 16)] = m.group(1)
     return out
 
@@ -3105,7 +3105,7 @@ def native_spans(native_dir):
     out = {}
     for fn in sorted(os.listdir(native_dir)):
         if fn.endswith(".odin"):
-            for m in SPAN_HEAD.finditer(open(os.path.join(native_dir, fn)).read()):
+            for m in SPAN_HEAD.finditer(open(os.path.join(native_dir, fn), encoding="utf-8").read()):
                 out[int(m.group(2), 16)] = (m.group(1), int(m.group(3), 16))
     return out
 
@@ -3153,7 +3153,7 @@ def analyse(img, funcs, exe, ghidra_path, out_dir):
 def main():
     exe, ghidra_path, out_dir = sys.argv[1:4]
     img = Image(exe)
-    ghidra = [int(l.split()[0], 16) for l in open(ghidra_path) if l.strip()]
+    ghidra = [int(l.split()[0], 16) for l in open(ghidra_path, encoding="utf-8") if l.strip()]
     fnames = load_names(os.path.join(os.path.dirname(ghidra_path), "funcnames.txt"))
     funcs, rejected = build_funcs(img, ghidra)
     funcs.sort(key=lambda f: f.start)
@@ -3214,7 +3214,7 @@ def main():
         os.makedirs(d, exist_ok=True)
         out.append("")
         out.append("// Copies of the x86 package's contextless #force_inline helpers.")
-        with open(os.path.join(d, "code.odin"), "w") as fp:
+        with open(os.path.join(d, "code.odin"), "w", encoding="utf-8", newline="\n") as fp:
             fp.write(localize_calls("\n".join(out + inl_body), inl_names))
         nstruct += em.structured
         ndisp += em.dispatched
@@ -3225,7 +3225,7 @@ def main():
     reg += ["", "register :: proc() {"]
     reg += ["\tx86.register_funcs(%s.FUNCS[:])" % n for n in names]
     reg += ["\tnative.register()", "}"]
-    with open(os.path.join(out_dir, "rec.odin"), "w") as fp:
+    with open(os.path.join(out_dir, "rec.odin"), "w", encoding="utf-8", newline="\n") as fp:
         fp.write("\n".join(reg) + "\n")
     nentries = sum(len(f.entries) for f in funcs)
     print("functions %d, entries %d, instructions %d, packages %d, data pointers rejected %d"

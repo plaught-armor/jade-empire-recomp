@@ -3,7 +3,9 @@ rem Runs the Jade Empire port on Windows with the whole session logged to
 rem logs\play-<timestamp>.log beside this file. F12 in game writes a mark line
 rem and the frame as logs\play-<timestamp>\mark_NN_frame_NNNNN.ppm.
 rem
-rem GAME is the Jade Empire install folder. EXE is the unpacked Steam
+rem GAME is the Jade Empire install folder: by default Steam's, or the GOG
+rem offline installer's C:\GOG Games\Jade Empire when only that one exists
+rem (GOG Galaxy and other folders: set GAME). EXE is the unpacked Steam
 rem JadeEmpire.exe (docs/unpack.md; the shipped Steam exe is packed and does
 rem not run) or the GOG one as shipped; by default it is a copy named
 rem JadeEmpire.exe beside this file.
@@ -22,6 +24,7 @@ rem Blossom, Ming, Shen, Jen Zi, Ling, Prodigy, Tan). Player 2's hero is
 rem also the Control panel setting Player 2's Hero; online the joiner's pick
 rem counts.
 setlocal
+if not defined GAME if not exist "C:\Program Files (x86)\Steam\steamapps\common\Jade Empire\" if exist "C:\GOG Games\Jade Empire\" set "GAME=C:\GOG Games\Jade Empire"
 if not defined GAME set "GAME=C:\Program Files (x86)\Steam\steamapps\common\Jade Empire"
 if not defined EXE set "EXE=%~dp0JadeEmpire.exe"
 cd /d "%~dp0"
@@ -52,7 +55,7 @@ pause
 exit /b 1
 
 :no_exe
-echo Unpacked JadeEmpire.exe not found: %EXE%
+echo JadeEmpire.exe not found: %EXE%
 echo Copy it beside jade.exe, or edit EXE at the top of %~nx0.
 pause
 exit /b 1

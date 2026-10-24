@@ -31,29 +31,96 @@ made from.
 - SDL3 and the FFmpeg development libraries (`libavcodec`, `libavformat`,
   `libavutil`, `libswscale`, `libswresample`).
 - A C compiler, for `port/src/win32/movie.c`.
-- Python 3 with `pefile` and `unicorn`, only for unpacking the Steam exe:
+- Steam only: Python 3 with `pefile` and `unicorn`, for unpacking the exe:
   `pip install pefile unicorn`.
+- GOG on Linux without Wine: innoextract 1.9 or later, for extracting the
+  offline installer.
 - curl, to fetch the capstone 5.0.7 source the recompiler builds against.
 - An x86-64 CPU with AVX2.
 
-## Building
+## Setting up the game files
 
-The scripts expect the game at `steamapps/common/Jade Empire` inside the
-repository root (a symlink is fine), whichever store it came from. The exe the
-port runs goes to `unpacked/JadeEmpire.exe`.
+The port needs two things from your copy of the game: the installed game
+folder (data, movies, sound) and `JadeEmpire.exe`, whose code the recompiler
+reads. The game folder stays as installed. Like the game, the port keeps its
+settings (`JadeEmpire.ini`) and saves (`Save/`) there.
+
+On Linux the scripts expect the game folder at `steamapps/common/Jade Empire`
+inside the repository root, whichever store it came from, and the exe at
+`unpacked/JadeEmpire.exe`. A symlink to the real folder is fine.
+
+### Steam
+
+1. Install Jade Empire: Special Edition through Steam. On Linux it does not
+   matter whether Steam runs it with Proton; only the files are used. They
+   are under `steamapps/common/Jade Empire` in your Steam library, usually
+   `~/.local/share/Steam/steamapps/common/Jade Empire`.
+2. Link it into the repository:
+
+   ```sh
+   mkdir -p steamapps/common
+   ln -s ~/.local/share/Steam/steamapps/common/"Jade Empire" steamapps/common/
+   ```
+
+3. The Steam exe is packed with PECompact2 and must be unpacked. This needs
+   Python 3 with `pefile` and `unicorn` (see [docs/unpack.md](docs/unpack.md)):
+
+   ```sh
+   mkdir -p unpacked
+   python3 tools/unpack_pec2.py "steamapps/common/Jade Empire/JadeEmpire.exe" unpacked/JadeEmpire.exe
+   ```
+
+### GOG
+
+1. Get the game folder, one of these ways:
+   - Install it with GOG Galaxy, Heroic or the offline installer (under Wine
+     on Linux).
+   - On Linux, extract the offline installer with
+     [innoextract](https://constexpr.org/innoextract/) 1.9 or later. Keep the
+     two `.bin` files beside the `.exe`:
+
+     ```sh
+     innoextract -I app -d ~/Games/jade-gog "setup_jade_empire_1.00_(15538).exe"
+     ```
+
+     The game folder is then `~/Games/jade-gog/app`.
+2. Link it into the repository:
+
+   ```sh
+   mkdir -p steamapps/common
+   ln -s ~/Games/jade-gog/app "steamapps/common/Jade Empire"
+   ```
+
+3. The GOG exe is not packed. Copy it as is:
+
+   ```sh
+   mkdir -p unpacked
+   cp "steamapps/common/Jade Empire/JadeEmpire.exe" unpacked/
+   ```
+
+The GOG folder also holds GOG's `d3d9.dll` stutter fix, the launcher and
+`JadeEmpireConfig.exe`. The port uses none of them; its own settings are in
+the game's Options menu.
+
+### Checking the exe
 
 ```sh
-# 1. Steam: unpack the PECompact2-packed exe (docs/unpack.md).
-python3 tools/unpack_pec2.py "steamapps/common/Jade Empire/JadeEmpire.exe" unpacked/JadeEmpire.exe
-#    GOG: the exe is not packed; copy it as is.
-mkdir -p unpacked && cp "steamapps/common/Jade Empire/JadeEmpire.exe" unpacked/
+sha256sum unpacked/JadeEmpire.exe
+```
 
-# 2. Build the recompiler and tools (tools/build.bat on Windows).
+It must print one of the two hashes under [Requirements](#requirements). Any
+other value means a different build of the game, or, for Steam, a failed
+unpack. The recompiler's address lists do not fit other builds.
+
+## Building
+
+```sh
+# 1. Build the recompiler and tools (tools/build.bat on Windows).
 #    Then generate the recompiled code into port/src/rec (about 10 seconds).
 tools/build.sh
 port/build/x86rec unpacked/JadeEmpire.exe re/ghidra_funcs.txt port/src/rec
 
-# 3. Build (about 45 seconds) and run.
+# 2. Build (about 45 seconds) and run.
 port/build.sh
 port/play.sh
 ```
@@ -70,20 +137,26 @@ DLLs and zips everything as `port/build/jade-win.zip`, for your own use only.
 
 To build on Windows itself:
 
-1. Install Odin, Python and Visual Studio (or its Build Tools) with the C++
-   workload.
-2. Run steps 1 and 2 above, with `python` in place of `python3` (GOG: copy
-   the exe instead of unpacking it).
-3. From an *x64 Native Tools Command Prompt*, run `port\build.bat`. It
+1. Install Odin and Visual Studio (or its Build Tools) with the C++
+   workload, and for Steam also Python.
+2. Put `JadeEmpire.exe` in `unpacked\` as in step 3 for your store above,
+   with your game folder's path in place of `steamapps/common/Jade Empire`
+   (Steam: `python` in place of `python3`). The game folder does not need
+   linking into the repository on Windows.
+3. Run step 1 of [Building](#building), with `tools\build.bat` and
+   `port\build\x86rec.exe`.
+4. From an *x64 Native Tools Command Prompt*, run `port\build.bat`. It
    downloads the SDL3, FFmpeg and zlib sources and DLLs it needs and writes
    `port\build\win`.
 
 This has not yet been tried on a real Windows PC.
 
 Either way, put your unpacked (Steam) or original (GOG) `JadeEmpire.exe` in
-`build\win` beside `jade.exe` and run `play.bat`. Set `GAME` if the game is not
-in the default Steam folder. A native exe and a cross-built exe from the same commit and
-Odin version play online together.
+`build\win` beside `jade.exe` and run `play.bat`. It finds the game in
+Steam's default folder, or in `C:\GOG Games\Jade Empire` (the GOG offline
+installer's default). For any other folder, such as a GOG Galaxy install or a
+second Steam library, set `GAME` at the top of `play.bat`. A native exe and a
+cross-built exe from the same commit and Odin version play online together.
 
 ## Online co-op
 

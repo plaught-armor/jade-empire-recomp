@@ -137,8 +137,10 @@ CreateWindowExA :: proc() {
 	wnd_x, wnd_y, wnd_w, wnd_h = 0, 0, max(w, 64), max(h, 64)
 	_ = x; _ = y
 	t := strings.clone_to_cstring(title != 0 ? x86.cstr(title) : "Jade Empire", context.temp_allocator)
+	// Fullscreen waits for fullscreen_start: created fullscreen and hidden,
+	// then sized and shown, Windows kept the window at its windowed size
+	// while SDL went on reporting the display's, so Present drew a crop.
 	flags: sdl.WindowFlags = {.OPENGL, .HIDDEN, .RESIZABLE}
-	if start_fullscreen {flags += {.FULLSCREEN}}
 	window = sdl.CreateWindow(t, c.int(wnd_w), c.int(wnd_h), flags)
 	if window == nil {
 		x86.fatal("SDL_CreateWindow: %s", sdl.GetError())
@@ -176,6 +178,7 @@ DefWindowProcA :: proc() {
 ShowWindow :: proc() {
 	if window != nil {
 		if arg(1) == 0 {sdl.HideWindow(window)} else {sdl.ShowWindow(window)}
+		fullscreen_start()
 	}
 	ret(2, 1)
 }
@@ -183,8 +186,19 @@ ShowWindow :: proc() {
 resize :: proc(w, h: i32) {
 	if w > 0 && h > 0 {
 		wnd_w, wnd_h = w, h
-		sdl.SetWindowSize(window, c.int(w * wnd_scale), c.int(h * wnd_scale))
+		// Fullscreen keeps the window at the display's size; the windowed
+		// size it returns to was set before fullscreen_start.
+		if !fullscreen() {sdl.SetWindowSize(window, c.int(w * wnd_scale), c.int(h * wnd_scale))}
 	}
+}
+
+// Setting FULLSCREEN, once the device has given the window its windowed
+// size and the window is shown.
+fullscreen_start :: proc() {
+	if !start_fullscreen || gl_ctx == nil || sdl.GetWindowFlags(window) & {.HIDDEN} != {} {return}
+	start_fullscreen = false
+	fullscreen_set(true)
+	_ = sdl.SyncWindow(window) // false only when it timed out
 }
 
 // The letterboxed image: the largest centred rectangle of the guest

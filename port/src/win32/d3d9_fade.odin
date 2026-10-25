@@ -5,6 +5,7 @@
 // WHY: docs/rendering.md §3
 package win32
 
+import "core:fmt"
 import gl "vendor:OpenGL"
 import sdl "vendor:sdl3"
 import "../x86"
@@ -86,6 +87,7 @@ fade_init :: proc() {
 // (Re)allocates the held frame when the window size changes; the new one is black.
 fade_resize :: proc(w, h: i32) {
 	if w == fade.w && h == fade.h {return}
+	fmt.eprintf("d3d9: window %dx%d pixels%s\n", w, h, fullscreen() ? ", fullscreen" : "")
 	if fade.tex != 0 {gl.DeleteTextures(1, &fade.tex)}
 	gl.CreateTextures(gl.TEXTURE_2D, 1, &fade.tex)
 	gl.TextureStorage2D(fade.tex, 1, gl.RGBA8, max(w, 1), max(h, 1))

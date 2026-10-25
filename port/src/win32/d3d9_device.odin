@@ -130,6 +130,7 @@ device_create :: proc(pp: u32) -> u32 {
 		frame_init()
 	}
 	frame_reset(p)
+	fullscreen_start()
 	swap_vsync = p.interval != D3DPRESENT_INTERVAL_IMMEDIATE
 	swap_apply()
 	return D3D_OK

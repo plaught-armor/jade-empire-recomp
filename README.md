@@ -157,7 +157,10 @@ from the same version of this repository and the same Odin version.
    address to give your friend appears in the window title and on the
    clipboard.
 2. UDP port 47000 is opened through UPnP when the router allows it. Otherwise,
-   forward it by hand.
+   forward it by hand. A firewall on the host's own machine must let it in
+   too. On Linux that is `sudo ufw allow 47000/udp` with ufw, or
+   `sudo firewall-cmd --permanent --add-port=47000/udp && sudo firewall-cmd --reload`
+   with firewalld. Windows asks to allow the game the first time it hosts.
 3. The other player picks **Online → Join Online Game** and types or pastes
    that address. The game does not restart: both stay in the title menu.
 4. The host starts a new game or loads one, and play starts for both. A

@@ -3,7 +3,9 @@
 package win32
 
 import "core:fmt"
+import "core:hash/xxhash"
 import "core:os"
+import "core:path/filepath"
 import "core:strings"
 import "../x86"
 
@@ -39,6 +41,29 @@ exe_text :: proc(path: string, allocator := context.allocator) -> []u8 {
 		if a < b do copy(text[a - x86.TEXT_LO:b - x86.TEXT_LO], data[raw + int(a - lo):raw + int(b - lo)])
 	}
 	return text
+}
+
+// XXH3 of exe_text for the build the port is made from: the GOG exe and the
+// unpacked Steam exe. The packed Steam exe does not match.
+EXE_TEXT_HASH :: 0x67f40e0206ba4295
+
+// Names a game folder's exe may have, in the order they are tried: the
+// unpacked Steam copy first, since the Steam folder also holds the packed
+// original under the plain name.
+EXE_NAMES :: [?]string{"JadeEmpire.unpacked.exe", "JadeEmpire.exe"}
+
+// The first EXE_NAMES file in game whose code is the supported build's, or
+// false after printing what was found instead.
+exe_find :: proc(game: string, allocator := context.allocator) -> (string, bool) {
+	for name in EXE_NAMES {
+		path, _ := filepath.join({game, name}, allocator)
+		if !os.exists(path) do continue
+		text := exe_text(path, context.temp_allocator)
+		if text != nil && xxhash.XXH3_64(text) == EXE_TEXT_HASH do return path, true
+		fmt.eprintfln("%s is not the supported Jade Empire build, or is still packed", path)
+	}
+	fmt.eprintfln("no usable JadeEmpire.exe in %s. GOG: the installed one works as is. Steam: unpack it to JadeEmpire.unpacked.exe beside it (README).", game)
+	return "", false
 }
 
 load_pe :: proc(path: string) -> Image {

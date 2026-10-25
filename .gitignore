@@ -7,6 +7,8 @@
 !/LICENSE
 !/.github/
 !/README.md
+!/install.sh
+!/install.bat
 !/docs/
 !/tools/
 !/re/

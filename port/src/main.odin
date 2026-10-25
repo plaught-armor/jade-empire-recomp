@@ -2,6 +2,7 @@ package main
 
 import "core:fmt"
 import "core:os"
+import "core:path/filepath"
 import "core:strconv"
 import "core:strings"
 import "native"
@@ -9,19 +10,21 @@ import "rec"
 import "win32"
 import "x86"
 
-// Usage: jade <game dir> <unpacked exe>. The game runs with the game dir as
-// its working directory. `jade --version` prints the version line and exits.
+// Usage: jade [<game dir> [<exe>]]. The game dir defaults to the folder jade
+// is in, and the exe to the one win32.exe_find picks there. The game runs
+// with the game dir as its working directory. `jade --version` prints the
+// version line and exits.
 main :: proc() {
 	if len(os.args) == 2 && os.args[1] == "--version" {
 		print_version()
 		return
 	}
-	if len(os.args) != 3 {
-		fmt.eprintln("usage: jade <game dir> <unpacked JadeEmpire.exe> | jade --version")
+	if len(os.args) > 3 {
+		fmt.eprintln("usage: jade [<game dir> [<JadeEmpire.exe>]] | jade --version")
 		os.exit(2)
 	}
 	print_version()
-	exe := os.args[2]
+	game, exe := game_paths()
 	x86.mem_init()
 	x86.fault_init()
 	x86.hle_trace = os.get_env("JE_HLE_TRACE", context.temp_allocator) != ""
@@ -34,10 +37,9 @@ main :: proc() {
 	native.stick_log_on = os.get_env("JE_STICK_LOG", context.temp_allocator) != ""
 	rec.register()
 	// A relaunch (win32 relaunch.odin) runs again on these from any folder.
-	win32.relaunch_game = absolute(os.args[1])
-	win32.relaunch_exe = absolute(os.args[2])
-	if err := os.set_working_directory(os.args[1]); err != nil {
-		fmt.eprintfln("cannot enter %s: %v", os.args[1], err)
+	win32.relaunch_game, win32.relaunch_exe = game, exe
+	if err := os.set_working_directory(game); err != nil {
+		fmt.eprintfln("cannot enter %s: %v", game, err)
 		os.exit(1)
 	}
 	// The port's settings: JadeEmpire.ini [Port], then JE_<key>.
@@ -71,6 +73,29 @@ main :: proc() {
 	win32.tex_hd_init()
 	win32.boot(exe)
 	fmt.eprintln("entry point returned")
+}
+
+// The game dir and exe from the command line, filled in as main describes
+// and made absolute; exits when no usable exe is found.
+game_paths :: proc() -> (game, exe: string) {
+	if len(os.args) > 1 {
+		game = os.args[1]
+	} else {
+		self, err := os.get_executable_path(context.temp_allocator)
+		if err != nil {
+			fmt.eprintfln("cannot find jade's own folder: %v", err)
+			os.exit(1)
+		}
+		game = filepath.dir(self)
+	}
+	if len(os.args) > 2 {
+		exe = os.args[2]
+	} else {
+		ok: bool
+		exe, ok = win32.exe_find(game, context.temp_allocator)
+		if !ok do os.exit(1)
+	}
+	return absolute(game), absolute(exe)
 }
 
 // path made absolute, or path when it cannot be.

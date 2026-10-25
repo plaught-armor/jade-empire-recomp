@@ -9,10 +9,13 @@ the original entry point, before any CRT initialiser runs, so `.data` holds its
 link-time contents.
 
 ```
-python tools/unpack_pec2.py "steamapps/common/Jade Empire/JadeEmpire.exe" unpacked/JadeEmpire.exe
+python tools/unpack_pec2.py "<game>/JadeEmpire.exe" "<game>/JadeEmpire.unpacked.exe"
 ```
 
-Needs `unicorn` and `pefile` (any venv).
+Needs `unicorn` and `pefile` (any venv). `install.sh` and `install.bat` run
+this on the first install from Steam, in a venv of their own
+(`port/build/venv`). The output (sha256 `53445f0e…afe`) goes beside the
+packed exe, where `jade` looks for it first (`win32.exe_find`).
 
 ## What the stub does
 

@@ -8,7 +8,6 @@ set -eu
 cd "$(dirname "$0")"
 root="$(cd .. && pwd)"
 game="$root/steamapps/common/Jade Empire"
-exe="$root/unpacked/JadeEmpire.exe"
 # A full build takes about 45 s, so skip it when nothing changed since the
 # last one.
 if [ ! -x jade ] || [ -n "$(find src build.sh -newer jade -print -quit)" ]; then
@@ -19,4 +18,4 @@ stamp="$(date +%Y%m%d-%H%M%S)"
 mkdir -p "logs/play-$stamp"
 log="$PWD/logs/play-$stamp.log"
 echo "logging to $log"
-JE_STICK_LOG=1 JE_MARK_DIR="$PWD/logs/play-$stamp" ./jade "$game" "$exe" 2>&1 | tee "$log"
+JE_STICK_LOG=1 JE_MARK_DIR="$PWD/logs/play-$stamp" ./jade "$game" 2>&1 | tee "$log"

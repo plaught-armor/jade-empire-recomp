@@ -63,7 +63,7 @@ another Steam library), give the game folder:
 ```
 
 It takes a minute or two (longer the first time). To play, run `jade` in the
-game folder. To start in fullscreen, run `JE_FULLSCREEN=1 ./jade` there.
+game folder.
 
 **GOG without Wine.** GOG's offline installer is a Windows program. To get
 the game folder without running it, download the installer from your GOG
@@ -100,6 +100,34 @@ it shows the end of `port/build/install.log`, which has the full details.
 
 Get the new version of this repository, then run the installer again.
 
+## Playing
+
+**Starting the game.** On Linux, open a terminal in the game folder and run
+`./jade`. On Windows, double-click `play.bat` in the game folder; it also
+writes a log of each session to the `logs` folder there. The game opens in a
+window. Alt+Enter switches to fullscreen and back.
+
+**Controls.** Keyboard and mouse work as in the original game, and so does a
+controller: Xbox, PlayStation, Switch and most others. Connect it before you
+start the game, so the on-screen button names match it (PlayStation and
+Switch controllers get their own names). It can be unplugged and plugged back
+in while you play. The d-pad moves through the menus.
+
+**Settings.** The port's settings are extra rows below the game's own in its
+options menus. The video settings screen has the graphics ones: frame rate,
+render scale, anti-aliasing, sharpening, ambient occlusion, draw distance,
+shadows, fullscreen and more. The control settings screen has the controller
+and combat ones: camera, targeting, enemy AI, parry, combat pace and more.
+Each row explains itself at the bottom of the screen. The port's improvements
+start switched on, but the frame rate starts at the game's original 30: set
+Frame Rate to 60 or more for smoother play. Settings are saved in the
+`[Port]` section of `JadeEmpire.ini` in the game folder. The full list is in
+[docs/recompiler.md](docs/recompiler.md) §11.
+
+**Couch co-op.** With two controllers connected, turn on Co-op on the
+control settings screen. The second controller then plays a second hero
+beside you, chosen with Player 2's Hero.
+
 ## For developers
 
 `port/play.sh` rebuilds the port when its source has changed and runs it with
@@ -132,6 +160,9 @@ from the same version of this repository and the same Odin version.
    forward it by hand.
 3. The other player picks **Online → Join Online Game** and types or pastes
    that address.
+
+Online, both players play with a controller: the keyboard and mouse are not
+used during an online game.
 
 Both players need the same game files. Their builds of the port must come
 from the same commit and the same Odin version; the peers check this. The OS

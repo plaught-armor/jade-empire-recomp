@@ -33,7 +33,7 @@ else
 	for d in "$HOME/.local/share/Steam/steamapps/common/Jade Empire" \
 		"$HOME/.steam/steam/steamapps/common/Jade Empire" \
 		"$HOME/.var/app/com.valvesoftware.Steam/.local/share/Steam/steamapps/common/Jade Empire" \
-		"$repo/steamapps/common/Jade Empire"; do
+		"$repo/game"; do
 		if [ -f "$d/chitin.key" ]; then
 			game="$d"
 			break

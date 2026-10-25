@@ -2,8 +2,8 @@
 
 What the port and its tools know about Jade Empire's data, script VM and
 engine behaviour, recorded so mods and test automation build on facts rather
-than guesses. Addresses are guest addresses in the unpacked `JadeEmpire.exe`
-(sha256 `53445f0e…`). xoreos (<https://github.com/xoreos/xoreos>) is a useful
+than guesses. Addresses are guest addresses in `JadeEmpire.exe` (GOG, or
+the unpacked Steam exe: the same code). xoreos (<https://github.com/xoreos/xoreos>) is a useful
 starting point but incomplete for Jade Empire and wrong in places: every
 claim below was checked against the binary or the running game, and where
 xoreos disagreed that is noted.

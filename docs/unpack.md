@@ -1,6 +1,6 @@
 # Unpacking JadeEmpire.exe
 
-`steamapps/common/Jade Empire/JadeEmpire.exe` (sha256 `0d25f18c…54fe5`,
+The Steam `JadeEmpire.exe` (sha256 `0d25f18c…54fe5`,
 linked 2007-01-23, MSVC 7.1, relocations stripped, fixed base `0x400000`) is
 PECompact2-packed with the 2007 Steam DRM wrapper inside the stub.
 
@@ -67,7 +67,7 @@ enumerated; the caller then crashes on the failed device. The windowed path
 (`0x595e10`) skips the lookup. Inferred cause: the host only enumerates its
 native refresh rate (144 Hz here), so the 60 Hz modes are never found.
 
-Set `Windowed=1` in `[Render]` of `steamapps/common/Jade Empire/JadeEmpire.ini`
+Set `Windowed=1` in `[Render]` of the game folder's `JadeEmpire.ini`
 (the original is backed up as `JadeEmpire.ini.orig`), then run from the game
 folder:
 

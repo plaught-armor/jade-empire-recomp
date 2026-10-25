@@ -1,7 +1,9 @@
 # JadeEmpire.exe inventory
 
-Static inventory of `unpacked/JadeEmpire.exe` (sha256 `53445f0e…afe`, see
-`docs/unpack.md`). It records what the x86 → Odin recompiler and the win32 HLE
+Static inventory of the game exe: the unpacked Steam exe (sha256
+`53445f0e…afe`, see `docs/unpack.md`) or the GOG exe (sha256 `38224cc9…3c1`),
+whose code is the same. The counts below were taken from the unpacked Steam
+exe. It records what the x86 → Odin recompiler and the win32 HLE
 layer have to handle. Everything here is static analysis; nothing was observed
 at runtime except where `docs/unpack.md` says so.
 
@@ -9,10 +11,10 @@ Reproduce:
 
 ```
 tools/build.sh
-port/build/inventory unpacked/JadeEmpire.exe re/ghidra_funcs.txt out.json --data-seeds
-port/build/srcmap    unpacked/JadeEmpire.exe re/ghidra_funcs.txt
-port/build/devcalls  unpacked/JadeEmpire.exe re/ghidra_funcs.txt 0x76f4f8
-port/build/funcnames unpacked/JadeEmpire.exe re > re/funcnames.txt
+port/build/inventory "<exe>" re/ghidra_funcs.txt out.json --data-seeds
+port/build/srcmap    "<exe>" re/ghidra_funcs.txt
+port/build/devcalls  "<exe>" re/ghidra_funcs.txt 0x76f4f8
+port/build/funcnames "<exe>" re > re/funcnames.txt
 ```
 
 Data files: `re/ghidra_funcs.txt` (7504 Ghidra 12.1.4 function starts,

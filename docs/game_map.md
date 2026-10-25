@@ -2,7 +2,7 @@
 
 What the port touches in the game's gameplay code: the functions it hooks,
 calls or patches, the structure fields it reads and writes, and the port file
-that owns each. Addresses are in `unpacked/JadeEmpire.exe`. The how and why of
+that owns each. Addresses are in `JadeEmpire.exe` (GOG, or Steam unpacked: the same code). The how and why of
 each change is in `docs/recompiler.md` (§9 guest patches, §10 behavior hooks,
 §11 settings menu); rendering is mapped in `docs/rendering.md`, the platform
 layer in `docs/hle.md`. Function names match `re/names.txt` and

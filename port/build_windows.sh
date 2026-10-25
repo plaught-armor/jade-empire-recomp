@@ -108,8 +108,8 @@ cp build/sdl3-win/LICENSE.txt build/win/LICENSE-SDL3.txt
 cp build/ffmpeg-win/LICENSE.txt build/win/LICENSE-FFmpeg.txt
 sed 's/\r*$/\r/' play.bat > build/win/play.bat
 
-# build/jade-win.zip: what a Windows PC needs, without jade.pdb. The game
-# files and the unpacked JadeEmpire.exe are never part of it.
+# build/jade-win.zip: what a Windows PC needs, without jade.pdb. No game
+# file, the exe included, is ever part of it.
 rm -f build/jade-win.zip
 (cd build/win && zip -q -X ../jade-win.zip jade.exe play.bat SDL3.dll \
 	avcodec-63.dll avformat-63.dll avutil-61.dll swresample-7.dll swscale-10.dll \

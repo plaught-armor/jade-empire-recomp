@@ -39,8 +39,8 @@ Iteration time (16 threads):
   (headless gamescope), including online co-op between two Wine peers.
   `build/jade-win.zip` holds what a Windows PC needs: jade.exe, the DLLs,
   their licences and `play.bat` (from `port/play.bat`, converted to CRLF),
-  which runs the game from the Steam folder with the unpacked
-  `JadeEmpire.exe` beside it and logs to `logs\play-<timestamp>.log`. The
+  which runs the game from its own folder (the game folder, beside
+  `JadeEmpire.exe`) and logs to `logs\play-<timestamp>.log`. The
   zip never holds jade.pdb, game files or the unpacked exe.
 - `port/build.bat` builds the same `build\win` folder natively on Windows,
   run from an x64 Native Tools Command Prompt (MSVC's `cl`, `lib` and

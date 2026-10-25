@@ -1,4 +1,4 @@
-// Recursive-descent inventory of the unpacked JadeEmpire.exe's .text.
+// Recursive-descent inventory of JadeEmpire.exe's .text.
 // Usage: inventory <exe> <ghidra_funcs.txt> <out.json> [--data-seeds]
 // WHY: docs/exe_inventory.md
 //

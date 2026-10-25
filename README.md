@@ -104,9 +104,8 @@ Get the new version of this repository, then run the installer again.
 
 `port/play.sh` rebuilds the port when its source has changed and runs it with
 a log of each session in `port/logs/`. It expects the game folder (or a link
-to it) at `steamapps/common/Jade Empire` inside this repository, with a usable
-exe in it (the GOG exe, or the Steam one unpacked to
-`JadeEmpire.unpacked.exe`). The steps `install.sh` runs, by hand:
+to it) at `game` inside this repository, with a usable exe in it (the GOG
+exe, or the Steam one unpacked to `JadeEmpire.unpacked.exe`). The steps `install.sh` runs, by hand:
 
 ```sh
 tools/build.sh                     # the recompiler and the other tools

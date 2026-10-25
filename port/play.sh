@@ -7,7 +7,7 @@
 set -eu
 cd "$(dirname "$0")"
 root="$(cd .. && pwd)"
-game="$root/steamapps/common/Jade Empire"
+game="$root/game"
 # A full build takes about 45 s, so skip it when nothing changed since the
 # last one.
 if [ ! -x jade ] || [ -n "$(find src build.sh -newer jade -print -quit)" ]; then

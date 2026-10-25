@@ -386,7 +386,8 @@ load and a fight. A build made without
 it hashes its own binary instead; `jade --version` and the first line of
 every log print it), a hash of the game exe's code (0x401000 to 0x6e1000 as
 loaded, so the GOG exe and the unpacked Steam exe match) and a hash of the
-names and sizes of the files under `override` and `textures_hd`; any difference is
+names and sizes of the files under `override` (not `textures_hd`: textures
+do not touch the simulation); any difference is
 a REJECT with the reason logged on both sides. `Save`, `JadeEmpire.ini` and
 the gameplay settings are not compared: the joiner takes the host's (Save
 and settings from the host, below). HELLO also carries the joiner's pick of
@@ -648,8 +649,7 @@ is the joiner's own: `settings_sync` leaves `P2_HERO` out.
 `win32/net_save.odin`). The joiner plays on the host's `Save`, the host's
 `JadeEmpire.ini` and the host's gameplay settings, never on its own, so
 peers need not copy saves or match configs by hand and a rejoin always
-boots as the host did. Only the build ID, the game exe, `override` and
-`textures_hd` must match (the config check above).
+boots as the host did. Only the build ID, the game exe and `override` must match (the config check above).
 
 - At boot, before it hosts, the host lists `Save` (every folder and file
   under it, sorted by name, with sizes) into a manifest with

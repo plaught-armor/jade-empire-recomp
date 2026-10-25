@@ -120,7 +120,7 @@ Net_Config :: struct #packed {
 	version: u32,
 	port:    u64, // this port's build: port_id
 	exe:     u64, // the unpacked game exe
-	files:   u64, // names and sizes under override and textures_hd
+	files:   u64, // names and sizes under override
 }
 
 // hero: the hero the joining peer, player 2, picked; now: its host_now.
@@ -169,7 +169,7 @@ NET_MISMATCH_SAY := [Net_Mismatch]string {
 	.Version  = "the host runs another version of the port",
 	.Port     = "the host runs another build of the port (build both from the same commit)",
 	.Exe      = "the host has another JadeEmpire.exe",
-	.Files    = "the host's override or textures_hd differ from ours",
+	.Files    = "the host's override differs from ours",
 }
 
 Net_Reject :: struct #packed {
@@ -670,7 +670,7 @@ net_cfg_check :: proc(c: Net_Config) -> Net_Mismatch {
 	case c.version != m.version: fmt.eprintfln("net: peer runs another port version (%d, ours %d)", c.version, m.version); return .Version
 	case c.port != m.port: fmt.eprintln("net: peer runs another build of the port (build both from the same commit, or copy one jade binary to both)"); return .Port
 	case c.exe != m.exe: fmt.eprintln("net: peer has another JadeEmpire.exe"); return .Exe
-	case c.files != m.files: fmt.eprintln("net: peer's override or textures_hd differ"); return .Files
+	case c.files != m.files: fmt.eprintln("net: peer's override differs"); return .Files
 	}
 	return .None
 }
@@ -1508,8 +1508,9 @@ file_hash :: proc(path: string) -> u64 {
 	return xxhash.XXH3_64(data)
 }
 
-// Every file under override and textures_hd, by path (lower case, sorted)
-// and size.
+// Every file under override, by path (lower case, sorted) and size.
+// textures_hd is left out: HD textures only change what is drawn, never the
+// simulation, so peers may differ there.
 @(private = "file")
 files_hash :: proc() -> u64 {
 	list: [dynamic]string
@@ -1527,7 +1528,7 @@ files_hash :: proc() -> u64 {
 			}
 		}
 	}
-	for d in ([]string{"override", "textures_hd"}) {walk(d, d, &list)}
+	walk("override", "override", &list)
 	slice.sort(list[:])
 	return xxhash.XXH3_64(transmute([]u8)strings.join(list[:], "\n", context.temp_allocator))
 }

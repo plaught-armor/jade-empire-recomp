@@ -50,10 +50,10 @@ scancode_dik :: proc(s: sdl.Scancode) -> u8 {
 SIDED_VK := [6]u8{225, 229, 224, 228, 226, 230}
 
 // GetAsyncKeyState semantics: mouse buttons VK 1/2/4, sided modifiers, and
-// otherwise any scancode that maps to the VK. Under lockstep nothing is
-// down: only the pads, as all peers share them, drive the game.
+// otherwise any scancode that maps to the VK. Under lockstep player 1's
+// keyboard and mouse as every peer has replayed them (kbm.odin).
 vk_down :: proc(vk: u32) -> bool {
-	if lockstep {return false}
+	if lockstep {return kbm_vk_down(vk)}
 	switch vk {
 	case 1, 2, 4:
 		b := sdl.GetMouseState(nil, nil)

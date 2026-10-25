@@ -7,11 +7,12 @@ rem Usage: install.bat [game folder]
 rem Without a folder it looks in Steam's usual folder, then in
 rem C:\GOG Games\Jade Empire. Double-clicking it works too.
 rem
-rem Needs Odin on PATH and Visual Studio or its Build Tools with "Desktop
-rem development with C++"; it finds Visual Studio by itself. The Steam
-rem JadeEmpire.exe is packed (docs/unpack.md): the first run unpacks it into
-rem JadeEmpire.unpacked.exe beside it, which also needs Python, with pefile and
-rem unicorn installed into port\build\venv. The GOG exe is used as it is.
+rem Needs nothing installed beforehand: the build downloads the Odin compiler
+rem it uses (tools\odin.bat), SDL3 and FFmpeg into port\build, and needs no
+rem Visual Studio or Windows SDK. The Steam JadeEmpire.exe is packed
+rem (docs/unpack.md): the first run unpacks it into JadeEmpire.unpacked.exe
+rem beside it, which also needs Python, with pefile and unicorn installed
+rem into port\build\venv. The GOG exe is used as it is.
 setlocal
 cd /d "%~dp0"
 set "REPO=%CD%"
@@ -27,18 +28,6 @@ if not defined GAME goto no_game
 if not exist "%GAME%\chitin.key" goto bad_game
 for %%g in ("%GAME%") do set "GAME=%%~fg"
 echo Game folder: %GAME%
-
-rem The programs the build needs.
-where odin >nul 2>nul || goto no_odin
-where cl >nul 2>nul && goto have_cl
-set "VSWHERE=%ProgramFiles(x86)%\Microsoft Visual Studio\Installer\vswhere.exe"
-if not exist "%VSWHERE%" goto no_vs
-set VS=
-for /f "usebackq delims=" %%i in (`"%VSWHERE%" -latest -products * -requires Microsoft.VisualStudio.Component.VC.Tools.x86.x64 -property installationPath`) do set "VS=%%i"
-if not defined VS goto no_vs
-call "%VS%\VC\Auxiliary\Build\vcvars64.bat" >nul || goto no_vs
-where cl >nul 2>nul || goto no_vs
-:have_cl
 
 rem Each step's output goes to the log, which is shown when a step fails.
 set "LOG=%REPO%\port\build\install.log"
@@ -70,7 +59,7 @@ set "EXE=%GAME%\JadeEmpire.unpacked.exe"
 call :sha "%EXE%" %STEAM_UNPACKED% || goto bad_unpack
 
 :build
-echo Building the recompiler (the first time takes a few minutes)...
+echo Building the recompiler (the first time also downloads Odin and takes a few minutes)...
 call tools\build.bat x86rec >>"%LOG%" 2>&1 || goto failed
 echo Translating the game's code (about 10 seconds)...
 port\build\x86rec.exe "%EXE%" re\ghidra_funcs.txt port\src\rec >>"%LOG%" 2>&1 || goto failed
@@ -109,17 +98,6 @@ goto stop
 :bad_game
 echo.
 echo %GAME% is not a Jade Empire game folder (it has no chitin.key).
-goto stop
-
-:no_odin
-echo.
-echo Odin was not found. Install it and add its folder to PATH (README.md, "What you need").
-goto stop
-
-:no_vs
-echo.
-echo Visual Studio's C++ compiler was not found. Install Visual Studio or its Build Tools,
-echo with "Desktop development with C++" selected.
 goto stop
 
 :no_exe

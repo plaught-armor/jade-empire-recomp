@@ -43,7 +43,7 @@ import "vendor:zlib"
 import "../x86"
 
 NET_MAGIC :: 0x494e454a // "JENI"
-NET_VERSION :: 11
+NET_VERSION :: 12
 // The delay covers half the round trip most inputs were acked within
 // (NET_PING_KEEP of NET_PINGS) plus NET_DELAY_MARGIN frames for frame-time
 // jitter, and is at least NET_DELAY_MIN.
@@ -251,9 +251,13 @@ Net_Fix_Chunk :: struct {
 // bits; then count, the inputs carried, with NET_HAS_HASH set when the
 // sender's last hash (Net_Hash) follows. Each input then follows, against the
 // one before it (frame first - 1's, which the receiver has, for the first):
-// a byte of NET_CHANGED bits, one per axis, NET_BUTTONS and NET_ON, then for
+// a byte of changed bits, one per axis, NET_BUTTONS and NET_EXT, then for
 // each changed axis the difference zigzagged and for changed buttons the
-// bits that flipped, as LEB128 varints. A pad held still costs a byte a
+// bits that flipped, as LEB128 varints. With NET_EXT a second byte of
+// Net_Ext bits follows, then for the keys a byte of the words that changed
+// and each one's flipped bits, the mouse buttons that flipped, the cursor's
+// move, the mouse's motion and the wheel zigzagged, and the typed
+// characters' count and bytes. A pad and keyboard held still cost a byte a
 // frame. The hash rides with the input of frame hash_at, the first one made
 // after it, so it is sent until the peer has that input.
 Net_Input :: struct #packed {
@@ -270,9 +274,12 @@ Net_Hash :: struct #packed {
 	hash:  u64,
 }
 NET_BUTTONS :: len(Pad_Axis)
-NET_ON :: NET_BUTTONS + 1
-#assert(NET_ON < 8)
-NET_INPUT_MAX :: 1 + len(Pad_Axis) * 3 + 3 // bytes, one input at most
+NET_EXT :: NET_BUTTONS + 1
+#assert(NET_EXT < 8)
+Net_Ext :: enum u8 {On, Keys, Buttons, At, Mouse, Wheel, Chars}
+// Bytes, one input at most: the pad's, then the second byte, the keys, the
+// mouse buttons, cursor, motion and wheel, and the characters.
+NET_INPUT_MAX :: 1 + len(Pad_Axis) * 3 + 3 + 1 + (1 + len(Kbm{}.keys) * 5) + 1 + 2 * 3 + 2 * 3 + 3 + (1 + len(Kbm{}.chars))
 
 net_on := false
 net_slot: int // the local player: 0 the host, 1 the peer that joined
@@ -686,7 +693,7 @@ net_frame :: proc(next: i64, local: Pad_Input) {
 	net_delay_step(local)
 	top := next + nt.delay
 	for f in nt.local_top + 1 ..= top {
-		nt.local[f & (NET_RING - 1)] = f == top ? local : nt.local[nt.local_top & (NET_RING - 1)]
+		nt.local[f & (NET_RING - 1)] = f == top ? local : input_held(nt.local[nt.local_top & (NET_RING - 1)])
 		nt.made[f & (NET_RING - 1)] = now
 	}
 	nt.local_top = max(nt.local_top, top)
@@ -979,7 +986,7 @@ net_delay_step :: proc(local: Pad_Input) {
 	switch {
 	case want > nt.delay:
 		nt.delay += 1
-	case want < nt.delay && time.tick_since(nt.calm) >= NET_CALM && local == nt.local[nt.local_top & (NET_RING - 1)]:
+	case want < nt.delay && time.tick_since(nt.calm) >= NET_CALM && !kbm_events(local.kbm) && local == input_held(nt.local[nt.local_top & (NET_RING - 1)]):
 		nt.delay -= 1
 	case:
 		return
@@ -1028,13 +1035,56 @@ input_put :: proc(b: []u8, prev, in_: Pad_Input) -> int {
 		d := i32(in_.axes[a]) - i32(prev.axes[a])
 		if d == 0 {continue}
 		mask |= 1 << u8(i)
-		n += varint_put(b[n:], u32((d << 1) ~ (d >> 31)))
+		n += varint_put(b[n:], zigzag(d))
 	}
 	if x := in_.buttons ~ prev.buttons; x != 0 {
 		mask |= 1 << NET_BUTTONS
 		n += varint_put(b[n:], u32(x))
 	}
-	if in_.on != prev.on {mask |= 1 << NET_ON}
+	k, pk := in_.kbm, prev.kbm
+	ext: bit_set[Net_Ext; u8]
+	if in_.on != prev.on {ext += {.On}}
+	if k.keys != pk.keys {ext += {.Keys}}
+	if k.buttons != pk.buttons {ext += {.Buttons}}
+	if k.at != pk.at {ext += {.At}}
+	if k.mouse != {} {ext += {.Mouse}}
+	if k.wheel != 0 {ext += {.Wheel}}
+	if k.chars[0] != 0 {ext += {.Chars}}
+	if ext != {} {
+		mask |= 1 << NET_EXT
+		b[n] = transmute(u8)ext
+		n += 1
+	}
+	if .Keys in ext {
+		at := n
+		words := u8(0)
+		n += 1
+		for w, i in k.keys {
+			if x := w ~ pk.keys[i]; x != 0 {
+				words |= 1 << u8(i)
+				n += varint_put(b[n:], x)
+			}
+		}
+		b[at] = words
+	}
+	if .Buttons in ext {
+		b[n] = k.buttons ~ pk.buttons
+		n += 1
+	}
+	if .At in ext {
+		for v, i in k.at {n += varint_put(b[n:], zigzag(i32(v) - i32(pk.at[i])))}
+	}
+	if .Mouse in ext {
+		for v in k.mouse {n += varint_put(b[n:], zigzag(i32(v)))}
+	}
+	if .Wheel in ext {n += varint_put(b[n:], zigzag(i32(k.wheel)))}
+	if .Chars in ext {
+		c := 0
+		for c < len(k.chars) && k.chars[c] != 0 {c += 1}
+		b[n] = u8(c)
+		copy(b[n + 1:], k.chars[:c])
+		n += 1 + c
+	}
 	b[0] = mask
 	return n
 }
@@ -1052,7 +1102,7 @@ input_get :: proc(b: []u8, prev: Pad_Input) -> (in_: Pad_Input, n: int) {
 		v, k := varint_get(b[at:])
 		if k == 0 {return {}, 0}
 		at += k
-		in_.axes[a] = i16(i32(prev.axes[a]) + (i32(v >> 1) ~ -i32(v & 1)))
+		in_.axes[a] = i16(i32(prev.axes[a]) + unzigzag(v))
 	}
 	if mask & (1 << NET_BUTTONS) != 0 {
 		v, k := varint_get(b[at:])
@@ -1060,8 +1110,69 @@ input_get :: proc(b: []u8, prev: Pad_Input) -> (in_: Pad_Input, n: int) {
 		at += k
 		in_.buttons = prev.buttons ~ u16(v)
 	}
-	if mask & (1 << NET_ON) != 0 {in_.on = !prev.on}
+	in_ = input_held(in_)
+	if mask & (1 << NET_EXT) == 0 {return in_, at}
+	if at >= len(b) {return {}, 0}
+	ext := transmute(bit_set[Net_Ext; u8])b[at]
+	at += 1
+	if .On in ext {in_.on = !prev.on}
+	kb := &in_.kbm
+	if .Keys in ext {
+		if at >= len(b) {return {}, 0}
+		words := b[at]
+		at += 1
+		for i in 0 ..< len(kb.keys) {
+			if words & (1 << u8(i)) == 0 {continue}
+			v, k := varint_get(b[at:])
+			if k == 0 {return {}, 0}
+			at += k
+			kb.keys[i] ~= v
+		}
+	}
+	if .Buttons in ext {
+		if at >= len(b) {return {}, 0}
+		kb.buttons ~= b[at]
+		at += 1
+	}
+	if .At in ext {
+		for i in 0 ..< 2 {
+			v, k := varint_get(b[at:])
+			if k == 0 {return {}, 0}
+			at += k
+			kb.at[i] = i16(i32(prev.kbm.at[i]) + unzigzag(v))
+		}
+	}
+	if .Mouse in ext {
+		for i in 0 ..< 2 {
+			v, k := varint_get(b[at:])
+			if k == 0 {return {}, 0}
+			at += k
+			kb.mouse[i] = i16(unzigzag(v))
+		}
+	}
+	if .Wheel in ext {
+		v, k := varint_get(b[at:])
+		if k == 0 {return {}, 0}
+		at += k
+		kb.wheel = i16(unzigzag(v))
+	}
+	if .Chars in ext {
+		if at >= len(b) || int(b[at]) > len(kb.chars) || at + 1 + int(b[at]) > len(b) {return {}, 0}
+		c := int(b[at])
+		copy(kb.chars[:], b[at + 1:][:c])
+		at += 1 + c
+	}
 	return in_, at
+}
+
+@(private = "file")
+zigzag :: proc(d: i32) -> u32 {
+	return u32((d << 1) ~ (d >> 31))
+}
+
+@(private = "file")
+unzigzag :: proc(v: u32) -> i32 {
+	return i32(v >> 1) ~ -i32(v & 1)
 }
 
 @(private = "file")

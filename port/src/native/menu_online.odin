@@ -1,8 +1,11 @@
 // The main menu (CPanelMainMenu), condensed into two submenus: the top
 // level is Singleplayer, Online, Options, Game Credits and Exit;
 // Singleplayer holds New Game, Load Game and Play Mini-games, Online holds
-// Host Online Game and Join Online Game when playing alone and Leave Online
-// Game in an online game, each with a Back row (B goes back too). The panel
+// Host Online Game and Join Online Game when playing alone, New Game, Load
+// Game and Leave Online Game on a hosting lobby, and Leave Online Game when
+// joined or in an online game, each with a Back row (B goes back too). The
+// panel built again while a lobby is open (back from Load Game) opens at
+// Online. The panel
 // is built once with the top level's five buttons; a level change relabels
 // them and refills the list box with as many as the level has, the next
 // frame, outside the button's own event. The online rows open a lobby here
@@ -130,6 +133,7 @@ Menu_List_0056acd0 :: proc() {
 	for &r, i in menu_stock {r = {ld(p + u32(i) * 8), ld(p + u32(i) * 8 + 4)}}
 	menu_level = .Top
 	menu_next = nil
+	if win32.net_lobby && !win32.net_on {menu_next = .Online}
 	menu_buttons = {}
 	menu_list_set(.Top)
 }
@@ -145,7 +149,14 @@ menu_list_set :: proc(level: Menu_Level) -> int {
 	case .Single:
 		rows = {menu_stock[0], menu_stock[1], menu_stock[2], own(.Back)}
 	case .Online:
-		rows = win32.net_on || win32.net_lobby ? {own(.Leave), own(.Back)} : {own(.Host), own(.Join), own(.Back)}
+		switch {
+		case win32.net_lobby && !win32.net_on && win32.net_slot == 0:
+			rows = {menu_stock[0], menu_stock[1], own(.Leave), own(.Back)}
+		case win32.net_on || win32.net_lobby:
+			rows = {own(.Leave), own(.Back)}
+		case:
+			rows = {own(.Host), own(.Join), own(.Back)}
+		}
 	}
 	if int(ld(MENU_LIST + 4)) < len(rows) {x86.fatal("menu: the main menu's row list holds %d, not %d", ld(MENU_LIST + 4), len(rows))}
 	p := ld(MENU_LIST + 8)

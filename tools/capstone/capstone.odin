@@ -1,11 +1,12 @@
 // capstone 5.0.7, x86 32-bit, through the flat view in capstone.c (built by
-// tools/build.sh).
+// tools/build.sh; for Windows prebuilt into port/winlib/lib by
+// port/winlib/build.sh).
 package capstone
 
 import "core:c"
 
 when ODIN_OS == .Windows {
-	foreign import cs "../../port/build/capstone/capstone.lib"
+	foreign import cs "../../port/winlib/lib/capstone.lib"
 } else {
 	foreign import cs "../../port/build/capstone/libcapstone.a"
 }

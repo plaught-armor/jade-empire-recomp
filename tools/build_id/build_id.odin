@@ -11,7 +11,9 @@
 // (docs/recompiler.md §8) and no game state reads the host OS's libm, so a
 // Linux and a Windows peer play together. The compiler that builds this tool
 // is the one that builds the port (build.sh, build_windows.sh, build.bat run
-// it with the same odin), so its version comes from ODIN_VERSION.
+// it with the same odin), so its version comes from ODIN_VERSION. Only the
+// first 7 digits of the commit hash count: a release's odin.exe reports 7, an
+// odin built from a checkout as many as git prints (9 here).
 package build_id
 
 import "core:crypto/sha2"
@@ -39,7 +41,8 @@ main :: proc() {
 	slice.sort(paths)
 	h: sha2.Context_256
 	sha2.init_256(&h)
-	sha2.update(&h, transmute([]u8)fmt.tprintf("odin version %s:%s\n", ODIN_VERSION, ODIN_VERSION_HASH))
+	commit := ODIN_VERSION_HASH[:min(7, len(ODIN_VERSION_HASH))]
+	sha2.update(&h, transmute([]u8)fmt.tprintf("odin version %s:%s\n", ODIN_VERSION, commit))
 	for p in paths {
 		line := fmt.tprintf("%s src/%s\n", file_hash(src, p), p)
 		sha2.update(&h, transmute([]u8)line)

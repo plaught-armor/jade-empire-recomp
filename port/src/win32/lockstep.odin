@@ -66,6 +66,7 @@ lock_begin :: proc(clock0: time.Duration, epoch: i64) {
 		clear(&d.events)
 		d.overflow, d.dx, d.dy, d.dz = false, 0, 0, 0
 	}
+	kbm_begin()
 	if heap_floor != HEAP_PLAY {
 		heap_play()
 		va_play()
@@ -143,15 +144,22 @@ wall_now :: proc() -> i64 {
 }
 
 // A frame presented: the virtual clock is at least the next frame's start,
-// and pad_in holds the next frame's inputs.
+// pad_in holds the next frame's inputs and player 1's keyboard and mouse
+// are in the guest.
 lock_frame :: proc() {
 	vframe += 1
 	vclock = max(vclock, lock_clock0 + time.Duration(vframe) * LOCK_STEP)
+	k := kbm_take(mouse_hx, mouse_hy)
 	if net_on {
-		net_frame(vframe + 1, pad_sample(pad))
+		local := pad_sample(pad)
+		if net_slot == 0 {local.kbm = k} else {local = kbm_pad(k, local)}
+		net_frame(vframe + 1, local)
 	} else {
-		pad_in = {pad_sample(pad), pad_sample(pad2)}
+		p1 := pad_sample(pad)
+		p1.kbm = k
+		pad_in = {p1, pad_sample(pad2)}
 	}
+	kbm_apply(pad_in[0].kbm)
 	if lock_hash_every > 0 && (vframe + 1) % lock_hash_every == 0 {
 		fmt.eprintfln("lockstep: frame %d hash %016x clock %d mixed %d", vframe + 1, net_state_hash(), i64(vclock - lock_clock0), ds_mixed)
 	}

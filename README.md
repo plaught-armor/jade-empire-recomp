@@ -27,15 +27,16 @@ and may not work.
 - **A copy of this repository.** Download it with the green *Code* button on
   GitHub (*Download ZIP*) and unzip it anywhere, or use `git clone`.
 - **These programs, to build the port:**
-  - [Odin](https://odin-lang.org), the programming language the port is
-    written in. Use a recent nightly build, and make sure the `odin` command
-    works in a terminal.
-  - **Linux:** a C compiler (gcc or clang), curl, and SDL3 and FFmpeg with
-    their development files. Install them from your distribution's packages:
-    SDL3, plus `libavcodec`, `libavformat`, `libavutil`, `libswscale` and
-    `libswresample`.
-  - **Windows:** Visual Studio or the free Visual Studio Build Tools, with
-    *Desktop development with C++* selected.
+  - **Linux:** [Odin](https://odin-lang.org) `dev-2026-10`, the programming
+    language the port is written in (other versions may not build it, and
+    online play needs the same version on both sides; make sure the `odin`
+    command works in a terminal), a C compiler (gcc or clang), curl, and SDL3
+    and FFmpeg with their development files. Install those from your
+    distribution's packages: SDL3, plus `libavcodec`, `libavformat`,
+    `libavutil`, `libswscale` and `libswresample`.
+  - **Windows:** nothing. The installer downloads the Odin compiler it builds
+    with, SDL3 and FFmpeg into the repository's `port\build` folder; no Visual
+    Studio is needed.
   - **Steam version only:** [Python 3](https://www.python.org). The Steam
     `JadeEmpire.exe` is compressed and copy-protected, and the installer uses
     Python to make a readable copy of it.
@@ -145,9 +146,11 @@ port/build.sh                      # the game, as port/jade
 first argument. [docs/unpack.md](docs/unpack.md) explains the Steam unpacking.
 
 `port/build_windows.sh` cross-builds the Windows version on Linux. It needs
-clang-cl, lld-link and the Windows SDK files downloaded by
-[xwin](https://github.com/Jake-Shadle/xwin), and puts everything in
-`port/build/jade-win.zip`, for your own use only. A Windows version built on
+lld-link and zip, and puts everything in `port/build/jade-win.zip`, for your
+own use only. Both Windows builds link against the libraries in
+`port/winlib/lib` instead of Visual Studio's; after changing any C file, rerun
+`port/winlib/build.sh` (it needs clang-cl and the Windows SDK files downloaded
+by [xwin](https://github.com/Jake-Shadle/xwin); see `docs/hle.md` §13). A Windows version built on
 Linux and one built on Windows play online together, as long as both come
 from the same version of this repository and the same Odin version.
 
@@ -163,11 +166,15 @@ from the same version of this repository and the same Odin version.
    with firewalld. Windows asks to allow the game the first time it hosts.
 3. The other player picks **Online → Join Online Game** and types or pastes
    that address. The game does not restart: both stay in the title menu.
-4. The host starts a new game or loads one, and play starts for both. A
+4. The host picks **New Game** or **Load Game** in the same Online menu, and
+   play starts for both. A
    friend can also join later, while the host plays.
 
-Online, both players play with a controller: the keyboard and mouse are not
-used during an online game.
+Online, the host can play with the keyboard and mouse as usual, or a
+controller. The joiner's keyboard and mouse drive their hero like a
+controller: WASD or the arrows move, the mouse looks, the left and right
+buttons attack, Space blocks, and the other keys follow the game's first
+keyboard layout.
 
 Both players need the same game files. Their builds of the port must come
 from the same commit and the same Odin version; the peers check this. The OS

@@ -12,12 +12,12 @@ import "core:fmt"
 import "core:mem"
 import "../x86"
 
-// stb_vorbis built from src/win32/vorbis.c by build.sh, build_windows.sh and
-// build.bat, not Odin's prebuilt vendor:stb/vorbis: the decoded samples are
+// stb_vorbis built from src/win32/vorbis.c by build.sh (and for Windows by
+// winlib/build.sh into winlib/lib), not Odin's prebuilt vendor:stb/vorbis: the decoded samples are
 // guest state and must match across OSes.
 // WHY: docs/hle.md §11
 when ODIN_OS == .Windows {
-	foreign import vorbis_lib "../../build/win/vorbis.lib"
+	foreign import vorbis_lib "../../winlib/lib/vorbis.lib"
 } else {
 	foreign import vorbis_lib "../../build/libvorbis.a"
 }

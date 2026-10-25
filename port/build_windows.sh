@@ -1,16 +1,14 @@
 #!/bin/sh
 # Cross-builds the port for 64-bit Windows on Linux: build/win/jade.exe plus
 # the DLLs it needs beside it (SDL3, FFmpeg) and play.bat, all of it also
-# zipped as build/jade-win.zip. Needs clang-cl, llvm-lib, zip,
-# lld-link and the Windows SDK and CRT splatted by xwin into
-# $XWIN (default ~/.local/share/xwin; `xwin --accept-license splat --output
-# ~/.local/share/xwin`). The code targets x86-64-v3 (AVX2) unless JE_ARCH
+# zipped as build/jade-win.zip. Needs lld-link and zip; the Windows
+# libraries and the C code come prebuilt from winlib/lib (winlib/build.sh),
+# so no Windows SDK either. The code targets x86-64-v3 (AVX2) unless JE_ARCH
 # names another -microarch, so one exe runs on any recent PC. Online peers
 # need the same build ID (../tools/build_id, docs/hle.md §11). Other flags pass
 # through to odin, as in build.sh.
 set -eu
 cd "$(dirname "$0")"
-XWIN="${XWIN:-$HOME/.local/share/xwin}"
 mkdir -p build/win build/dl
 
 # FFmpeg 9.0 shared LGPL build (import libraries, headers, DLLs).
@@ -36,25 +34,6 @@ if [ ! -d build/sdl3-win ]; then
 	cp "build/dl/SDL3-$sdl/lib/x64/SDL3.dll" "build/dl/SDL3-$sdl/lib/x64/SDL3.lib" "build/dl/SDL3-$sdl/LICENSE.txt" build/sdl3-win/
 fi
 
-# zlib (src/win32/net_save.odin). Odin's vendor/zlib/libz.lib is built with
-# MSVC link-time code generation (/GL), which lld-link cannot read, so it is
-# built here from source, static CRT (/MT) like Odin's. The binding uses only
-# compress2, uncompress and compressBound, the same in every 1.2/1.3.
-zlib=1.3.1
-if [ ! -f build/zlib-win/libz.lib ]; then
-	curl -sSLf -o build/dl/zlib.tar.gz "https://github.com/madler/zlib/releases/download/v$zlib/zlib-$zlib.tar.gz"
-	rm -rf "build/dl/zlib-$zlib" build/zlib-win
-	tar -xzf build/dl/zlib.tar.gz -C build/dl
-	mkdir -p build/zlib-win/obj
-	for f in adler32 compress crc32 deflate inffast inflate inftrees trees uncompr zutil; do
-		clang-cl --target=x86_64-pc-windows-msvc /O2 /MT /w \
-			-imsvc "$XWIN/crt/include" -imsvc "$XWIN/sdk/include/ucrt" \
-			-imsvc "$XWIN/sdk/include/um" -imsvc "$XWIN/sdk/include/shared" \
-			/c "build/dl/zlib-$zlib/$f.c" "/Fobuild/zlib-win/obj/$f.obj"
-	done
-	llvm-lib /out:build/zlib-win/libz.lib build/zlib-win/obj/*.obj
-fi
-
 odin_sys="$(odin root)"
 root=build/odin-win
 rm -rf "$root"
@@ -68,35 +47,24 @@ done
 cp -r "$odin_sys/vendor/sdl3" "$root/vendor/sdl3"
 cp build/sdl3-win/SDL3.dll build/sdl3-win/SDL3.lib "$root/vendor/sdl3/"
 cp -r "$odin_sys/vendor/zlib" "$root/vendor/zlib"
-cp build/zlib-win/libz.lib "$root/vendor/zlib/"
-
-# Bink movie decoding (src/win32/movie.c), static CRT (/MT) like Odin's.
-clang-cl --target=x86_64-pc-windows-msvc /std:c17 /O2 /W3 /WX /MT \
-	-imsvc "$XWIN/crt/include" -imsvc "$XWIN/sdk/include/ucrt" \
-	-imsvc "$XWIN/sdk/include/um" -imsvc "$XWIN/sdk/include/shared" \
-	/Ibuild/ffmpeg-win/include /c src/win32/movie.c /Fobuild/win/movie.obj
-llvm-lib /out:build/win/movie.lib build/win/movie.obj
-# stb_vorbis with deterministic sin and cos (src/win32/vorbis.c, build.sh).
-clang-cl --target=x86_64-pc-windows-msvc /std:c17 /O2 /w /MT /fp:precise -ffp-contract=off \
-	-imsvc "$XWIN/crt/include" -imsvc "$XWIN/sdk/include/ucrt" \
-	-imsvc "$XWIN/sdk/include/um" -imsvc "$XWIN/sdk/include/shared" \
-	"/I$odin_sys/vendor/stb/src" /c src/win32/vorbis.c /Fobuild/win/vorbis.obj
-llvm-lib /out:build/win/vorbis.lib build/win/vorbis.obj
+cp winlib/lib/libz.lib "$root/vendor/zlib/"
 
 # The build ID, from a host build of ../tools/build_id.
 id="$(odin run ../tools/build_id -out:build/build_id)"
 
-# Odin's -windows-sdk-root passes /winsysroot, which wants the MSVC folder
-# layout; xwin's splat layout needs the library paths named. With a large
-# open-file limit (the default 1048576 in some shells) the Windows-target
-# build stalls single-threaded and eats tens of GB, so cap it.
+# -windows-sdk-root names the folder Odin matches its library names
+# against, case-blind (KERNEL32.lib is winlib/lib/kernel32.lib); the
+# libraries are winlib's alone (/nodefaultlib), with jadecrt.lib for the C
+# runtime start-up. With a large open-file limit (the default 1048576 in some
+# shells) the Windows-target build stalls single-threaded and eats tens of
+# GB, so cap it.
 ulimit -n 1024
 ODIN_ROOT="$PWD/$root" odin build src -out:build/win/jade.exe -target:windows_amd64 \
-	-windows-sdk-root:"$XWIN" -linker:lld -use-separate-modules \
+	-windows-sdk-root:"$PWD/winlib/lib" -linker:lld -use-separate-modules \
 	-o:"${JE_OPT:-speed}" -microarch:"${JE_ARCH:-x86-64-v3}" \
 	-define:GL_DEBUG="${JE_GL_DEBUG:-false}" \
 	-define:JE_BUILD_ID="$id" \
-	-extra-linker-flags:"/libpath:$XWIN/crt/lib/x86_64 /libpath:$XWIN/sdk/lib/um/x86_64 /libpath:$XWIN/sdk/lib/ucrt/x86_64" \
+	-extra-linker-flags:"/nodefaultlib /libpath:$PWD/winlib/lib jadecrt.lib libucrt.lib" \
 	"$@"
 
 # Runtime DLLs and their licences beside the exe.

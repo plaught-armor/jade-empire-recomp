@@ -17,6 +17,7 @@
 /port/*
 !/port/src/
 /port/src/rec/
+!/port/winlib/
 !/port/build.sh
 !/port/build_windows.sh
 !/port/build.bat

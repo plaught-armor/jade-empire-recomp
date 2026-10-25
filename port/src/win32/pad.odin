@@ -143,6 +143,7 @@ Pad_Input :: struct {
 	axes:    [Pad_Axis]i16, // sticks down positive, triggers 0..32767
 	buttons: u16, // bit i for PAD_BUTTONS[i], then PAD_DPAD's
 	on:      bool, // a pad is connected
+	kbm:     Kbm, // under lockstep, player 1's keyboard and mouse (kbm.odin)
 }
 PAD_DPAD := [4]sdl.GamepadButton{.DPAD_UP, .DPAD_DOWN, .DPAD_LEFT, .DPAD_RIGHT}
 PAD_AXES := [Pad_Axis]sdl.GamepadAxis {

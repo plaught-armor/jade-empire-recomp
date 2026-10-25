@@ -19,7 +19,7 @@ import "../x86"
 // (build_windows.sh) and its DLLs ship beside jade.exe.
 when ODIN_OS == .Windows {
 	foreign import movie_lib {
-		"../../build/win/movie.lib",
+		"../../winlib/lib/movie.lib",
 		"../../build/ffmpeg-win/lib/avformat.lib",
 		"../../build/ffmpeg-win/lib/avcodec.lib",
 		"../../build/ffmpeg-win/lib/swscale.lib",

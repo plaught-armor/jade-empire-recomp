@@ -351,8 +351,9 @@ warp_at: [2]f32
 
 GetCursorPos :: proc() {
 	if lockstep {
-		x86.wr32(arg(0), u32(wnd_x))
-		x86.wr32(arg(0) + 4, u32(wnd_y))
+		at := kbm_cursor_get()
+		x86.wr32(arg(0), u32(i32(at.x) + wnd_x))
+		x86.wr32(arg(0) + 4, u32(i32(at.y) + wnd_y))
 		ret(1, 1)
 		return
 	}
@@ -362,8 +363,11 @@ GetCursorPos :: proc() {
 	ret(1, 1)
 }
 
+// Under lockstep the guest's cursor moves on every peer, the pointer only
+// where it is player 1's.
 SetCursorPos :: proc() {
-	if window != nil && !lockstep {
+	if lockstep {kbm_cursor_set(i32(arg(0)) - wnd_x, i32(arg(1)) - wnd_y)}
+	if window != nil && (!lockstep || kbm_drives_p1()) {
 		// Same guest-to-host mapping as to_guest inverts (letterboxed view),
 		// so a later GetCursorPos returns the point set here.
 		mouse_hx, mouse_hy = input_to_host(f32(i32(arg(0)) - wnd_x), f32(i32(arg(1)) - wnd_y))
@@ -426,9 +430,29 @@ mouse_lparam :: proc(hx, hy: f32) -> u32 {
 
 mouse_buttons: u32 // MK_* state for wparam
 
+// A motion event's DirectInput delta in guest pixels, so a game-drawn
+// cursor tracks the host pointer; the pointer's host point kept.
+mouse_motion :: proc(m: sdl.MouseMotionEvent) -> (dx, dy: i32) {
+	echo := warp_due && abs(m.x - warp_at.x) < 1 && abs(m.y - warp_at.y) < 1
+	warp_due &&= !echo
+	gx, gy := to_guest_delta(m.xrel, m.yrel)
+	mouse_rem += echo ? {} : [2]f32{gx, gy}
+	dx, dy = i32(mouse_rem.x), i32(mouse_rem.y)
+	mouse_rem -= {f32(dx), f32(dy)}
+	mouse_hx, mouse_hy = m.x, m.y
+	return
+}
+
+// SDL 1 left, 2 middle, 3 right, 4.. extra; DirectInput 0 left, 1 right, 2 middle.
+di_button_of :: proc(b: u8) -> u32 {
+	return b == 2 ? 2 : (b == 3 ? 1 : u32(b) - 1)
+}
+
 // Translates pending SDL events into posted messages. Under lockstep only
-// closing the window and the host's own keys come through: the keyboard,
-// mouse and focus of one peer would steer its game away from the others'.
+// closing the window and the host's own keys come through; the keyboard and
+// mouse go to the frame's input record (kbm.odin), which every peer replays
+// alike, and focus is dropped: one peer's would steer its game away from
+// the others'.
 pump :: proc() {
 	upnp_poll()
 	if window != nil && title_extra != title_shown {
@@ -443,7 +467,16 @@ pump :: proc() {
 			case .QUIT, .WINDOW_CLOSE_REQUESTED:
 				post(WM_CLOSE, 0, 0)
 			case .KEY_DOWN, .KEY_UP:
-				_ = host_key(ev.key)
+				if !host_key(ev.key) {kbm_key(ev.key)}
+			case .TEXT_INPUT:
+				for r in string(ev.text.text) {kbm_char(r)}
+			case .MOUSE_MOTION:
+				kbm_move(mouse_motion(ev.motion))
+			case .MOUSE_BUTTON_DOWN, .MOUSE_BUTTON_UP:
+				mouse_hx, mouse_hy = ev.button.x, ev.button.y
+				kbm_button(di_button_of(ev.button.button), ev.button.down)
+			case .MOUSE_WHEEL:
+				kbm_wheel(i32(ev.wheel.y * 120))
 			case .GAMEPAD_ADDED:
 				pad_open(ev.gdevice.which)
 			case .GAMEPAD_REMOVED:
@@ -469,21 +502,12 @@ pump :: proc() {
 				if r < 0x100 {post(WM_CHAR, u32(r), 1)}
 			}
 		case .MOUSE_MOTION:
-			// DirectInput deltas in guest pixels, so a game-drawn cursor tracks the host pointer.
-			echo := warp_due && abs(ev.motion.x - warp_at.x) < 1 && abs(ev.motion.y - warp_at.y) < 1
-			warp_due &&= !echo
-			gx, gy := to_guest_delta(ev.motion.xrel, ev.motion.yrel)
-			mouse_rem += echo ? {} : [2]f32{gx, gy}
-			dx, dy := i32(mouse_rem.x), i32(mouse_rem.y)
-			mouse_rem -= {f32(dx), f32(dy)}
-			mouse_hx, mouse_hy = ev.motion.x, ev.motion.y
-			di_motion(dx, dy)
+			di_motion(mouse_motion(ev.motion))
 			post(WM_MOUSEMOVE, mouse_buttons, mouse_lparam(ev.motion.x, ev.motion.y))
 		case .MOUSE_BUTTON_DOWN, .MOUSE_BUTTON_UP:
 			b := ev.button
 			mouse_hx, mouse_hy = b.x, b.y
-			// SDL 1 left, 2 middle, 3 right, 4.. extra; DirectInput 0 left, 1 right, 2 middle.
-			di_button(b.button == 2 ? 2 : (b.button == 3 ? 1 : u32(b.button) - 1), b.down)
+			di_button(di_button_of(b.button), b.down)
 			// WM_[LRM]BUTTON(DOWN|UP): down codes 0x201/0x204/0x207, up = down + 1.
 			base: u32
 			mk: u32

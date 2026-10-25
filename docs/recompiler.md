@@ -22,37 +22,36 @@ Iteration time (16 threads):
   `x86.call_ext`, so splitting adds dispatch at run time, and with the long
   functions unoptimized, 81 packages built no faster than 22.
 - `port/build_windows.sh` cross-builds `port/build/win/jade.exe` on Linux in
-  about 31 s, with the SDL3 and FFmpeg DLLs and their licences beside it
-  (first run downloads them). It links with lld-link against the Windows SDK
-  and CRT that `xwin splat` puts in `$XWIN` (default
-  `~/.local/share/xwin`), naming the library paths itself, since Odin's
-  `-windows-sdk-root` expects the MSVC folder layout. Odin's own
-  `vendor/sdl3` holds git-lfs pointers instead of `SDL3.lib` and `SDL3.dll`,
-  so the script builds a shadow `ODIN_ROOT` (`build/odin-win`) whose
-  `vendor/sdl3` copy holds the real files. `movie.c` is compiled `/MT`: Odin
-  links the static CRT, and a `/MD` object brings duplicate CRT symbols.
-  With a very large open-file limit (1048576, the default in some shells)
-  the Windows-target `odin build` stalls on one thread and grows past 35 GB,
-  so the script sets `ulimit -n 1024`. `./build_windows.sh -debug` also
-  writes `jade.pdb` (about 110 MB) for the fault backtrace; lld-link warns
-  (LNK4099) that the CRT's own PDBs are missing. The exe runs under Wine 11
+  about 38 s, with the SDL3 and FFmpeg DLLs and their licences beside it
+  (first run downloads them). It links with lld-link against
+  `port/winlib/lib` alone, no Windows SDK or Visual Studio libraries
+  (docs/hle.md §13); `-windows-sdk-root` points there only so Odin matches
+  its library names case-blind. Odin's own `vendor/sdl3` holds git-lfs
+  pointers instead of `SDL3.lib` and `SDL3.dll`, and its `vendor/zlib`
+  `libz.lib` `/GL` objects lld cannot read, so the script builds a shadow
+  `ODIN_ROOT` (`build/odin-win`) whose `vendor/sdl3` and `vendor/zlib`
+  copies hold the real files. With a very large open-file limit (1048576,
+  the default in some shells) the Windows-target `odin build` stalls on one
+  thread and grows past 35 GB, so the script sets `ulimit -n 1024`.
+  `./build_windows.sh -debug` also writes `jade.pdb` (about 110 MB) for the
+  fault backtrace. The exe runs under Wine 11
   (headless gamescope), including online co-op between two Wine peers.
   `build/jade-win.zip` holds what a Windows PC needs: jade.exe, the DLLs,
   their licences and `play.bat` (from `port/play.bat`, converted to CRLF),
   which runs the game from its own folder (the game folder, beside
   `JadeEmpire.exe`) and logs to `logs\play-<timestamp>.log`. The
   zip never holds jade.pdb, game files or the unpacked exe.
-- `port/build.bat` builds the same `build\win` folder natively on Windows,
-  run from an x64 Native Tools Command Prompt (MSVC's `cl`, `lib` and
-  `link`), downloading FFmpeg, SDL3 and zlib with the `curl` and `tar` that
-  come with Windows 10. It mirrors build_windows.sh: the same library
-  versions, zlib built from source (Odin's `libz.lib` holds `/GL` objects,
-  which only an MSVC at least as new as the one that made them can link), a
-  shadow `ODIN_ROOT` of directory junctions (created, never removed:
-  deleting one recursively could reach into the Odin install), `/MT`,
-  `x86-64-v3`, and the same build ID, so its exe plays online with a
-  cross-built one. It makes no zip. Its flow was checked under Wine's `cmd`
-  with stub tools; it has not been run on Windows.
+- `port/build.bat` builds the same `build\win` folder natively on Windows
+  with nothing installed: `tools/odin.bat` downloads the pinned Odin release
+  into `port/build/odin`, whose own `lld-link` links against
+  `port/winlib/lib` (docs/hle.md §13), and FFmpeg and SDL3 come with the
+  `curl` and `tar` of Windows 10. It mirrors build_windows.sh: the same
+  library versions (copied into the private Odin's `vendor`, so no shadow
+  root), `x86-64-v3`, and the same build ID, so its exe plays online with a
+  cross-built one. It makes no zip. It was run under Wine's `cmd`, from a
+  folder with a space in its path, with the downloads already in place: the
+  exe reached the attract movie, and `tools/build.bat`'s x86rec translated
+  the game identically to the Linux one. It has not been run on Windows.
 
 ## §1 Function model
 

@@ -54,6 +54,13 @@ for p in odin cc curl ar; do
 done
 [ -z "$missing" ] || fail "These programs are missing:$missing
 Install them first (README.md, \"What you need\")."
+# Online peers need the same build ID, which hashes the Odin version: the
+# Windows build uses this release (tools/odin.bat).
+ODIN_VER=dev-2026-10
+case "$(odin version)" in
+*" $ODIN_VER:"*) ;;
+*) echo "Warning: $(odin version), not $ODIN_VER: online play needs Odin $ODIN_VER on both sides." ;;
+esac
 if command -v pkg-config > /dev/null 2>&1; then
 	for l in sdl3 libavcodec libavformat libavutil libswscale libswresample; do
 		pkg-config --exists "$l" || missing="$missing $l"

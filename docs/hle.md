@@ -317,13 +317,24 @@ host's time at the handshake plus `vclock`; every file time is that epoch,
 so the save list sorts by name. `FindFirstFileA` lists names sorted
 case-insensitively (NTFS order) in every mode.
 
-**Input.** Under lockstep the guest reads pads only through `pad_in`, two
-`Pad_Input` records (axes, button and d-pad bits) sampled once per frame.
-`pump` drops keyboard, mouse and focus events (it still handles quit, the
-port's host keys and pad hotplug), `vk_down` is always false, `GetCursorPos`
-is fixed at the window origin, and `SetCursorPos` does not warp. Pad names
-are the Xbox 360 set on both peers, and `XInputSetState` succeeds without a
-pad. Rumble still goes to the local pad.
+**Input.** Under lockstep the guest reads input only through `pad_in`, two
+`Pad_Input` records (axes, button and d-pad bits, and a `Kbm`) sampled once
+per frame. `pump` drops focus events and collects the keyboard and mouse
+into `kbm.odin` instead of the guest (it still handles quit, the port's host
+keys and pad hotplug). Each frame `kbm_take` packs the local keys (DIK bits),
+mouse buttons, cursor, motion, wheel and up to four typed characters. Player
+1's (the host's, or the only player's) ride in its record, and every peer
+replays them into the guest at the same frame (`kbm_apply`): key, char and
+mouse messages, DirectInput keyboard and mouse events, `GetAsyncKeyState`
+(`kbm_vk_down`) and `GetCursorPos`. `SetCursorPos` moves that replayed
+cursor, and warps the real one only on the peer whose mouse is player 1's.
+The game has one keyboard and mouse, so the joiner's become player 2's pad
+(`kbm_pad`, after the first keyboard layout: WASD moves, the mouse looks,
+the buttons and keys map to the pad buttons), with its mouse held in the
+window. Keys and buttons already down when lockstep starts are ignored until
+let go. Key auto-repeat is not replayed, and the mouse lags by the net delay
+like the pads. Pad names are the Xbox 360 set on both peers, and
+`XInputSetState` succeeds without a pad. Rumble still goes to the local pad.
 
 **Audio.** The mixer would otherwise pull samples at the audio device's
 pace. Under lockstep `ds_pump` mixes exactly `vclock` × 48000 frames and
@@ -473,8 +484,10 @@ alone and quit cleanly.
 title menu (CPanelMainMenu) is condensed into two submenus (v150): the top
 level is Singleplayer, Online, Options, Game Credits and Exit; Singleplayer
 holds New Game, Load Game and Play Mini-games, and Online holds Host Online
-Game and Join Online Game when playing alone, Leave Online Game in an online
-game, each with a Back row. B in a submenu goes back too, in place of the
+Game and Join Online Game when playing alone, New Game, Load Game and Leave
+Online Game on a hosting lobby, and Leave Online Game when joined or in an
+online game, each with a Back row. The panel built again while a lobby is
+open (back from Load Game) opens at Online. B in a submenu goes back too, in place of the
 quit dialog, and going back focuses the row that led there. The demo's menu
 is left as it is. Five hooks do it: the row list build (0x0056acd0) puts the
 top level's rows in place of the game's six (kept for the submenus), so the
@@ -815,3 +828,42 @@ NaN. The joiner hears player 2's environment instead (`ds_view.reverb`,
 docs/recompiler.md §10). The Reverb row (`JE_REVERB`, docs/recompiler.md §11)
 scales the wet signal: Low by 0.5, High by 2, and Off stops the sends, so
 the mixer plays every buffer dry, as before the effect was mixed.
+
+## §13 Windows build without Visual Studio
+
+The Windows build needs no Visual Studio and no Windows SDK. It links with
+the `lld-link` that ships in Odin's Windows release, against the libraries in
+`port/winlib/lib` alone (`/nodefaultlib`; `-ignore-vs-search` on Windows,
+where Odin otherwise stops with "Windows SDK not found"). `port/build.bat`
+and `tools/build.bat` take the Odin release from `tools/odin.bat`, which
+downloads the pinned `dev-2026-10` zip into `port/build/odin` and checks its
+sha256. `port/build_windows.sh` cross-builds with the host Odin and the same
+libraries. The library folder reaches `lld-link` through `LIB` on Windows,
+as Odin splits `-extra-linker-flags` at spaces, so a `/libpath:` there cannot
+name a folder with a space in it.
+
+`port/winlib/lib` holds:
+- import libraries for the system DLLs Odin's packages import (kernel32,
+  advapi32, bcrypt, dnsapi, ntdll, shell32, ws2_32), made by `llvm-dlltool`
+  from the export lists in `port/winlib/def`. `libucrt.lib` names
+  `ucrtbase.dll`, which every `api-ms-win-crt-*` set forwards to; it ships
+  with Windows 10 and later, so the exe needs no Visual C++ redistributable;
+- `jadecrt.lib` (`port/winlib/crt.c`), the part of the C runtime that
+  Visual Studio's static libraries put in an exe: `mainCRTStartup` (the
+  ucrtbase set-up libcmt does, then Odin's `main`), the TLS directory
+  (`_tls_used`, without which Odin's thread-local variables have no
+  storage), `__chkstk`, `_fltused`, and `memcpy` and `memmove`, which live in
+  `vcruntime140.dll`, not in ucrtbase;
+- the C code, prebuilt: zlib 1.3.1 (Odin's own `vendor/zlib/libz.lib` holds
+  MSVC link-time code generation objects, which `lld-link` cannot read;
+  `tools/odin.bat` copies this one over it in its private Odin), capstone
+  5.0.7 with `tools/capstone/capstone.c`, `movie.lib` (§4) and
+  `vorbis.lib` (§7, built `/fp:precise -ffp-contract=off` like the Linux
+  build). All of it is compiled `/Zl /GS-`: no default library and no
+  security cookie, whose check lives in libcmt.
+
+`port/winlib/build.sh` regenerates the folder on Linux, from xwin's copy of
+the SDK (for the export lists and headers) and clang-cl; rerun it after a C
+change. The build ID (§11) hashes the Odin version with the commit hash cut
+to 7 digits, as the release's `odin.exe` reports 7 and an Odin built from a
+checkout may report more.

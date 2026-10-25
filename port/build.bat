@@ -1,19 +1,18 @@
 @echo off
 rem Builds the port natively on 64-bit Windows: build\win\jade.exe plus the
-rem DLLs it needs beside it (SDL3, FFmpeg) and play.bat. Run it from an
-rem "x64 Native Tools Command Prompt for VS" (Visual Studio or its Build
-rem Tools, with the C++ workload) with odin on PATH; curl and tar
-rem come with Windows 10 and later. Generate src\rec first (README.md).
+rem DLLs it needs beside it (SDL3, FFmpeg) and play.bat. Needs nothing
+rem installed: the pinned Odin release comes from ..\tools\odin.bat and links
+rem with its own lld-link against the prebuilt libraries in winlib\lib, so
+rem no Visual Studio or Windows SDK either; curl and tar come with Windows 10
+rem and later. Generate src\rec first (README.md).
 rem
 rem The code targets x86-64-v3 (AVX2) unless JE_ARCH names another
-rem -microarch, as in build_windows.sh, and a build from the same commit and
-rem Odin version gets the same build ID as that cross build, so the two play
-rem online together (..\tools\build_id, docs/hle.md §11). JE_OPT=none builds
-rem unoptimized; other arguments pass through to odin.
+rem -microarch, as in build_windows.sh, and a build from the same commit gets
+rem the same build ID as that cross build, so the two play online together
+rem (..\tools\build_id, docs/hle.md §11). JE_OPT=none builds unoptimized;
+rem other arguments pass through to odin.
 setlocal
 cd /d "%~dp0"
-where cl >nul 2>nul || (echo cl.exe not found: run this from an x64 Native Tools Command Prompt. & exit /b 1)
-where odin >nul 2>nul || (echo odin not found on PATH. & exit /b 1)
 if not exist src\rec\ (echo src\rec is missing: generate it with tools\x86rec first ^(README.md^). & exit /b 1)
 if not defined JE_OPT set JE_OPT=speed
 if not defined JE_ARCH set JE_ARCH=x86-64-v3
@@ -33,10 +32,8 @@ if not exist build\ffmpeg-win\ (
 )
 
 rem SDL3 at the version Odin's vendor:sdl3 binds (the one build_windows.sh
-rem uses). Odin's own copies may be git-lfs pointers, so the build uses a
-rem shadow ODIN_ROOT whose vendor\sdl3 holds the real files; everything else
-rem is a junction to the installed Odin. Junctions are only ever created
-rem here, never removed: deleting one recursively could reach into Odin.
+rem uses), copied into the private Odin's vendor\sdl3 so the build links the
+rem same SDL3.lib the exe ships with.
 set SDL=3.4.2
 if not exist build\sdl3-win\ (
 	curl -sSLf -o build\dl\sdl3.zip "https://github.com/libsdl-org/SDL/releases/download/release-%SDL%/SDL3-devel-%SDL%-VC.zip" || exit /b 1
@@ -47,43 +44,15 @@ if not exist build\sdl3-win\ (
 	copy /y "build\dl\SDL3-%SDL%\LICENSE.txt" build\sdl3-win\ >nul || exit /b 1
 )
 
-rem zlib (src\win32\net_save.odin), built from source as build_windows.sh
-rem does: Odin's vendor\zlib\libz.lib holds link-time code generation (/GL)
-rem objects, which only an MSVC at least as new as the one that made them
-rem can link. Static CRT (/MT) like Odin's.
-set ZLIB=1.3.1
-if not exist build\zlib-win\libz.lib (
-	curl -sSLf -o build\dl\zlib.tar.gz "https://github.com/madler/zlib/releases/download/v%ZLIB%/zlib-%ZLIB%.tar.gz" || exit /b 1
-	tar -xzf build\dl\zlib.tar.gz -C build\dl || exit /b 1
-	mkdir build\zlib-win\obj 2>nul
-	for %%f in (adler32 compress crc32 deflate inffast inflate inftrees trees uncompr zutil) do (
-		cl /nologo /O2 /MT /w /c "build\dl\zlib-%ZLIB%\%%f.c" /Fobuild\zlib-win\obj\%%f.obj || exit /b 1
-	)
-	lib /nologo /out:build\zlib-win\libz.lib build\zlib-win\obj\*.obj || exit /b 1
-)
+pushd ..
+call tools\odin.bat || exit /b 1
+popd
+copy /y build\sdl3-win\SDL3.dll "%ODIN_ROOT%\vendor\sdl3\" >nul || exit /b 1
+copy /y build\sdl3-win\SDL3.lib "%ODIN_ROOT%\vendor\sdl3\" >nul || exit /b 1
 
-for /f "delims=" %%r in ('odin root') do set "ODIN_SYS=%%r"
-set "ROOT=%CD%\build\odin-win"
-mkdir "%ROOT%\vendor" 2>nul
-for %%d in (base core shared) do if not exist "%ROOT%\%%d" mklink /j "%ROOT%\%%d" "%ODIN_SYS%\%%d" >nul
-for /d %%d in ("%ODIN_SYS%\vendor\*") do if /i not "%%~nxd"=="sdl3" if /i not "%%~nxd"=="zlib" if not exist "%ROOT%\vendor\%%~nxd" mklink /j "%ROOT%\vendor\%%~nxd" "%%d" >nul
-xcopy /e /i /q /y "%ODIN_SYS%\vendor\sdl3" "%ROOT%\vendor\sdl3" >nul || exit /b 1
-copy /y build\sdl3-win\SDL3.dll "%ROOT%\vendor\sdl3\" >nul || exit /b 1
-copy /y build\sdl3-win\SDL3.lib "%ROOT%\vendor\sdl3\" >nul || exit /b 1
-xcopy /e /i /q /y "%ODIN_SYS%\vendor\zlib" "%ROOT%\vendor\zlib" >nul || exit /b 1
-copy /y build\zlib-win\libz.lib "%ROOT%\vendor\zlib\" >nul || exit /b 1
-
-rem Bink movie decoding (src\win32\movie.c), static CRT (/MT) like Odin's.
-cl /nologo /std:c17 /O2 /W3 /WX /MT /Ibuild\ffmpeg-win\include /c src\win32\movie.c /Fobuild\win\movie.obj || exit /b 1
-lib /nologo /out:build\win\movie.lib build\win\movie.obj || exit /b 1
-rem stb_vorbis with deterministic sin and cos (src\win32\vorbis.c, build.sh).
-cl /nologo /std:c17 /O2 /w /MT /fp:precise /I"%ODIN_SYS%\vendor\stb\src" /c src\win32\vorbis.c /Fobuild\win\vorbis.obj || exit /b 1
-lib /nologo /out:build\win\vorbis.lib build\win\vorbis.obj || exit /b 1
-
-for /f %%i in ('odin run ..\tools\build_id -out:build\win\build_id.exe') do set "BUILD_ID=%%i"
+for /f %%i in ('call "%ODIN%" run ..\tools\build_id -out:build\win\build_id.exe %ODIN_LINK%') do set "BUILD_ID=%%i"
 if not defined BUILD_ID (echo ..\tools\build_id failed. & exit /b 1)
-set "ODIN_ROOT=%ROOT%"
-odin build src -out:build\win\jade.exe -use-separate-modules -o:%JE_OPT% -microarch:%JE_ARCH% -define:GL_DEBUG=%JE_GL_DEBUG% -define:JE_BUILD_ID=%BUILD_ID% %* || exit /b 1
+"%ODIN%" build src -out:build\win\jade.exe %ODIN_LINK% -use-separate-modules -o:%JE_OPT% -microarch:%JE_ARCH% -define:GL_DEBUG=%JE_GL_DEBUG% -define:JE_BUILD_ID=%BUILD_ID% %* || exit /b 1
 
 rem Runtime DLLs and their licences beside the exe.
 copy /y build\sdl3-win\SDL3.dll build\win\ >nul || exit /b 1

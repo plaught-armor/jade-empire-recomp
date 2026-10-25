@@ -524,7 +524,11 @@ part of the config differed (`Net_Mismatch`), so the joiner says why, not
 only the host.
 
 **Router.** An open host starts a thread that sends an SSDP M-SEARCH for an
-InternetGatewayDevice (3 s), reads its description for a WANIPConnection:2,
+InternetGatewayDevice (3 s), to the multicast group and unicast to the
+default gateway (Linux `/proc/net/route`, else the LAN address with last
+byte 1): a stateful host firewall (ufw) drops the answer to the multicast
+ask, since it comes from an address the ask did not go to (found on a
+TP-Link with MiniUPnPd: multicast never answered, unicast at once), reads its description for a WANIPConnection:2,
 WANIPConnection:1 or WANPPPConnection:1 control URL, and asks it by SOAP to
 forward UDP at the port to this machine (`AddPortMapping`, lease 0, and on a
 refusal again with 7200 s for routers that take only forwards that lapse),
@@ -532,7 +536,9 @@ then for the public address (`GetExternalIPAddress`). The machine's LAN
 address is the TCP socket's own end toward the router, or before that the
 source address of a UDP socket connected to 8.8.8.8 (nothing is sent; Odin's
 `enumerate_interfaces` lists no interfaces on Linux). `pump` puts the
-outcome in the window title, the address to join (public, else LAN) on the
+outcome in the window title (with no forward, that UPnP did not open the
+port: a forward made by hand cannot be seen), the address to join (public,
+else LAN) on the
 clipboard, and logs `upnp: forwarded UDP P, join at A` or `upnp: no forward
 (why); LAN address A`. At exit `DeletePortMapping` takes the forward back.
 

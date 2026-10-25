@@ -9,6 +9,7 @@ package win32
 
 import "core:fmt"
 import "core:net"
+import "core:os"
 import "core:strconv"
 import "core:strings"
 import "core:sync"
@@ -67,7 +68,8 @@ upnp_poll :: proc() {
 		return
 	}
 	lan := up.local != "" ? fmt.tprintf("%s:%d", up.local, up.port) : fmt.tprintf("port %d", up.port)
-	title_set(fmt.tprintf("hosting on port %d; LAN %s; router did not open the port (forward UDP %d by hand)", up.port, lan, up.port))
+	// A forward made by hand cannot be seen from here: only UPnP's outcome is.
+	title_set(fmt.tprintf("hosting on port %d; LAN %s; UPnP did not open the port: forward UDP %d by hand, then friends join at your public address", up.port, lan, up.port))
 	if up.local != "" {_ = sdl.SetClipboardText(fmt.ctprintf("%s", lan))}
 	fmt.eprintfln("upnp: no forward (%s); LAN address %s", up.why, lan)
 }
@@ -121,15 +123,43 @@ upnp_search :: proc() -> (location: string, ok: bool) {
 	if err != nil {return}
 	defer net.close(sock)
 	if net.set_option(sock, .Receive_Timeout, 500 * time.Millisecond) != nil {return}
+	// Also asked unicast, at the gateway: a host firewall that keeps state
+	// (ufw) drops the gateway's answer to the multicast ask, which comes from
+	// an address the ask did not go to.
+	gw := upnp_gateway()
 	start := time.tick_now()
 	for tries := 0; time.tick_since(start) < UPNP_SEARCH_TIME; tries += 1 {
-		if tries % 2 == 0 {_, _ = net.send_udp(sock, transmute([]u8)string(UPNP_SEARCH), UPNP_SSDP)}
+		if tries % 2 == 0 {
+			_, _ = net.send_udp(sock, transmute([]u8)string(UPNP_SEARCH), UPNP_SSDP)
+			if gw != {} {_, _ = net.send_udp(sock, transmute([]u8)string(UPNP_SEARCH), net.Endpoint{gw, 1900})}
+		}
 		buf: [2048]u8
 		n, _, rerr := net.recv_udp(sock, buf[:])
 		if rerr != nil || n <= 0 {continue}
 		if l := upnp_header(string(buf[:n]), "location"); l != "" {return strings.clone(l), true}
 	}
 	return
+}
+
+// The default gateway: on Linux from the kernel's route table, else the
+// LAN address with its last byte 1, the usual router address; 0 when
+// neither is known.
+@(private = "file")
+upnp_gateway :: proc() -> net.IP4_Address {
+	when ODIN_OS == .Linux {
+		if b, err := os.read_entire_file("/proc/net/route", context.temp_allocator); err == nil {
+			rest := string(b)
+			for line in strings.split_lines_iterator(&rest) {
+				f := strings.fields(line, context.temp_allocator)
+				if len(f) < 3 || f[1] != "00000000" {continue}
+				if g, ok := strconv.parse_u64_of_base(f[2], 16); ok && g != 0 {return transmute(net.IP4_Address)u32le(g)}
+			}
+		}
+	}
+	lan, ok := net.parse_ip4_address(up.local)
+	if !ok {return {}}
+	lan[3] = 1
+	return lan
 }
 
 // A header's value from an HTTP head, its name in lower case.

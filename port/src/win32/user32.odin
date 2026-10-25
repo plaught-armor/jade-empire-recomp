@@ -227,17 +227,15 @@ to_guest_delta :: proc(dx, dy: f32) -> (f32, f32) {
 	return dx * f32(wnd_w) / rw, dy * f32(wnd_h) / rh
 }
 
+// The game's own window sizing is ignored: the device's back buffer sets the
+// window (device_create). With Windowed=0 the game sizes the window to the
+// screen before creating its 640x480 device, and the window, scaled by
+// wnd_scale, went past the screen; on Windows the picture came out cropped.
 MoveWindow :: proc() {
-	resize(i32(arg(3)), i32(arg(4)))
 	ret(6, 1)
 }
 
-SWP_NOSIZE :: 0x1
-
 SetWindowPos :: proc() {
-	if arg(6) & SWP_NOSIZE == 0 {
-		resize(i32(arg(4)), i32(arg(5)))
-	}
 	ret(7, 1)
 }
 

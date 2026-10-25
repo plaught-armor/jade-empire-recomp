@@ -445,12 +445,10 @@ Dev_Present :: proc() {
 	ctl_step(b, frame_count)
 	input_script_step(frame_count)
 	if trace_frame != max(u32) {x86.hle_trace = frame_count == trace_frame}
-	attach(blit_fbo[0], gl.COLOR_ATTACHMENT0, backbuf)
 	ww, wh: i32
 	_ = sdl.GetWindowSizeInPixels(window, &ww, &wh)
 	k := i32(res_scale(b))
-	fade_present(blit_fbo[0], i32(b.w) * k, i32(b.h) * k, ww, wh)
-	attach(blit_fbo[0], gl.COLOR_ATTACHMENT0, 0)
+	fade_present(b.gl, i32(b.w) * k, i32(b.h) * k, ww, wh)
 	_ = sdl.GL_SwapWindow(window)
 	menu := menu_up()
 	fps_wait(lockstep ? false : menu)

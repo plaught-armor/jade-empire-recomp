@@ -28,7 +28,8 @@ Fade :: struct {
 	tex, fbo:  u32, // the last ordinary frame, at window size
 	w, h:      i32,
 	pipe, vao: u32,
-	fs:        u32,
+	fs, copy:  u32, // the black overlay; the copy of a texture into a rectangle
+	lin:       u32, // linear sampler for the copy
 }
 
 fade := Fade{level = 1}
@@ -46,6 +47,24 @@ layout(location = 0) uniform float alpha;
 out vec4 color;
 void main() { color = vec4(0.0, 0.0, 0.0, alpha); }
 `
+
+// Present copies by drawing, not glBlitFramebuffer: AMD's Windows driver
+// showed a scaled blit's source unscaled (a 1.5x crop of the title screen).
+// rect: the destination's x, y and 1/w, 1/h in pixels; extent: the source
+// texels used, from the texture's (0,0); flip: the source is top row first.
+FADE_COPY_FS :: `#version 460 core
+layout(location = 0) uniform vec4 rect;
+layout(location = 1) uniform vec2 extent;
+layout(location = 2) uniform bool flip;
+layout(binding = 17) uniform sampler2D src;
+out vec4 color;
+void main() {
+	vec2 uv = (gl_FragCoord.xy - rect.xy) * rect.zw;
+	if (flip) uv.y = 1.0 - uv.y;
+	color = vec4(texture(src, uv * extent / vec2(textureSize(src, 0))).rgb, 1.0);
+}
+`
+FADE_UNIT :: 17 // texture unit of the copy's source, past SOFT_UNIT
 
 // GUI panel id open now, or 0. The GUI manager's panel table holds a pointer
 // for each open panel and 0 for a closed one (lookup 0x55d9f0).
@@ -80,6 +99,12 @@ fade_init :: proc() {
 	gl.CreateVertexArrays(1, &fade.vao)
 	gl.CreateProgramPipelines(1, &fade.pipe)
 	fade.fs = glsl_compile(FADE_FS, true)
+	fade.copy = glsl_compile(FADE_COPY_FS, true)
+	gl.CreateSamplers(1, &fade.lin)
+	gl.SamplerParameteri(fade.lin, gl.TEXTURE_MIN_FILTER, gl.LINEAR)
+	gl.SamplerParameteri(fade.lin, gl.TEXTURE_MAG_FILTER, gl.LINEAR)
+	gl.SamplerParameteri(fade.lin, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE)
+	gl.SamplerParameteri(fade.lin, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE)
 	gl.UseProgramStages(fade.pipe, gl.VERTEX_SHADER_BIT, glsl_compile(FADE_VS, false))
 	gl.UseProgramStages(fade.pipe, gl.FRAGMENT_SHADER_BIT, fade.fs)
 }
@@ -114,38 +139,53 @@ fade_step :: proc() -> (panel: Load_Panel) {
 	return
 }
 
-// Shows the frame: an ordinary back buffer (src, k x scaled) replaces the held
-// frame, a loading-screen or save-box one is dropped; the held frame goes to the window
-// under a black overlay of alpha 1 - level. Draws restore every state touched
-// here from render state (apply_raster), except the pipeline and VAO.
+// Shows the frame: an ordinary back buffer (texture src, its bw x bh texels
+// from (0,0)) replaces the held frame, a loading-screen or save-box one is
+// dropped; the held frame goes to the window under a black overlay of alpha
+// 1 - level. Draws restore every state touched here from render state
+// (apply_raster), except the pipeline and VAO.
 fade_present :: proc(src: u32, bw, bh, ww, wh: i32) {
 	panel := fade_step()
 	fade_resize(ww, wh)
 	raster_lost()
 	gl.Disable(gl.SCISSOR_TEST)
-	if panel == .None {
-		// Letterboxed; the bars stay as fade_resize cleared them.
-		fx, fy, fw, fh := view_rect(f32(ww), f32(wh))
-		x0, y0 := i32(fx), i32(fy)
-		x1, y1 := x0 + i32(fw), y0 + i32(fh)
-		gl.BlitNamedFramebuffer(src, fade.fbo, 0, 0, bw, bh, x0, y1, x1, y0, gl.COLOR_BUFFER_BIT, gl.LINEAR)
-	}
-	gl.BindFramebuffer(gl.DRAW_FRAMEBUFFER, 0)
-	gl.BlitNamedFramebuffer(fade.fbo, 0, 0, 0, ww, wh, 0, 0, ww, wh, gl.COLOR_BUFFER_BIT, gl.NEAREST)
-	if fade.level >= 1 {return}
-	gl.Viewport(0, 0, ww, wh)
 	gl.Disable(gl.DEPTH_TEST)
 	gl.Disable(gl.STENCIL_TEST)
 	gl.Disable(gl.CULL_FACE)
+	gl.Disable(gl.BLEND)
 	gl.PolygonMode(gl.FRONT_AND_BACK, gl.FILL)
 	gl.ColorMaski(0, true, true, true, true)
-	gl.Enable(gl.BLEND)
-	gl.BlendFuncSeparate(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA, gl.ZERO, gl.ONE)
-	gl.BlendEquationSeparate(gl.FUNC_ADD, gl.FUNC_ADD)
-	gl.ProgramUniform1f(fade.fs, 0, 1 - fade.level)
-	gl.BindProgramPipeline(fade.pipe)
 	gl.BindVertexArray(fade.vao)
-	gl.DrawArrays(gl.TRIANGLES, 0, 3)
+	gl.BindProgramPipeline(fade.pipe)
+	gl.UseProgramStages(fade.pipe, gl.FRAGMENT_SHADER_BIT, fade.copy)
+	gl.BindSampler(FADE_UNIT, fade.lin)
+	if panel == .None {
+		// Letterboxed; the bars stay as fade_resize cleared them.
+		fx, fy, fw, fh := view_rect(f32(ww), f32(wh))
+		fade_copy(src, bw, bh, fade.fbo, {i32(fx), i32(fy), i32(fw), i32(fh)}, true)
+	}
+	fade_copy(fade.tex, ww, wh, 0, {0, 0, ww, wh}, false)
+	gl.UseProgramStages(fade.pipe, gl.FRAGMENT_SHADER_BIT, fade.fs)
+	if fade.level < 1 {
+		gl.Enable(gl.BLEND)
+		gl.BlendFuncSeparate(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA, gl.ZERO, gl.ONE)
+		gl.BlendEquationSeparate(gl.FUNC_ADD, gl.FUNC_ADD)
+		gl.ProgramUniform1f(fade.fs, 0, 1 - fade.level)
+		gl.DrawArrays(gl.TRIANGLES, 0, 3)
+	}
 	gl.BindVertexArray(dg.vao)
 	gl.BindProgramPipeline(dg.pipe)
+}
+
+// Draws texels (0,0)-(sw,sh) of texture src over rectangle r (x, y, w, h) of
+// framebuffer dst, top row first when flip.
+@(private = "file")
+fade_copy :: proc(src: u32, sw, sh: i32, dst: u32, r: [4]i32, flip: bool) {
+	gl.BindFramebuffer(gl.DRAW_FRAMEBUFFER, dst)
+	gl.Viewport(r.x, r.y, r.z, r.w)
+	gl.ProgramUniform4f(fade.copy, 0, f32(r.x), f32(r.y), 1 / f32(max(r.z, 1)), 1 / f32(max(r.w, 1)))
+	gl.ProgramUniform2f(fade.copy, 1, f32(sw), f32(sh))
+	gl.ProgramUniform1i(fade.copy, 2, i32(flip))
+	gl.BindTextureUnit(FADE_UNIT, src)
+	gl.DrawArrays(gl.TRIANGLES, 0, 3)
 }

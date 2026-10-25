@@ -1,7 +1,7 @@
 // Starting over: the port runs itself again on the same game, from boot,
-// with the online settings changed. The main menu's online rows
-// (native/menu_online.odin) host, join and leave online games this way,
-// since lockstep play starts at boot on both peers.
+// with the online settings changed. Leaving an online game in play, and an
+// online game the main menu opened failing (net_fail), end this way, since
+// lockstep play cannot go back to the menu's own state.
 // WHY: docs/hle.md §11
 package win32
 
@@ -17,7 +17,7 @@ relaunch_game: string
 relaunch_exe: string
 
 // What a relaunch drops from the environment before it adds its own.
-RELAUNCH_DROP :: [?]string{"JE_NET_HOST", "JE_NET_JOIN", "JE_NET_OPEN", "JE_NET_MENU", "JE_NET_ERROR"}
+RELAUNCH_DROP :: [?]string{"JE_NET_HOST", "JE_NET_JOIN", "JE_NET_ERROR"}
 
 // Ends this game as game_exit does (telling the peer when bye is set) and
 // runs the port again with the environment less RELAUNCH_DROP plus set,

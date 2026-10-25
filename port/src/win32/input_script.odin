@@ -1,5 +1,7 @@
 // Scripted input for unattended test runs (JE_INPUT_SCRIPT). The script is a
-// comma-separated list of `frame:Action`:
+// comma-separated list of `frame:Action`, frame counting presented frames
+// from boot, or `+frame:Action` counting frames of lockstep play from its
+// start (lockstep.odin), for runs whose menus before it differ:
 //   Key           SDL scancode name ("Down", "Return", "Escape", "A"): a tap.
 //   Key~N         the key held for N frames.
 //   Move@x/y      move the pointer to guest client pixel (x, y).
@@ -36,6 +38,7 @@ Input_Tap :: struct {
 	value: i16, // Pad_Axis while down: deflection
 	p2:    bool, // Pad_*: on the second virtual gamepad
 	x, y:  f32, // Move: guest client pixels
+	play:  bool, // frame counts frames of lockstep play
 }
 
 input_taps: [dynamic]Input_Tap // pending, in script order
@@ -59,9 +62,12 @@ input_script_load :: proc(script: string) {
 		if len(input_taps) + 3 > INPUT_SCRIPT_MAX {x86.fatal("JE_INPUT_SCRIPT: over %d events", INPUT_SCRIPT_MAX)}
 		colon := strings.index_byte(item, ':')
 		if colon < 0 {x86.fatal("JE_INPUT_SCRIPT: %q is not frame:Action", item)}
-		frame, ok := strconv.parse_uint(item[:colon], 10)
+		play := strings.has_prefix(item, "+")
+		frame, ok := strconv.parse_uint(item[play ? 1 : 0:colon], 10)
 		if !ok {x86.fatal("JE_INPUT_SCRIPT: bad frame in %q", item)}
 		f, act := u32(frame), item[colon + 1:]
+		first := len(input_taps)
+		defer for &t in input_taps[first:] {t.play = play}
 		switch {
 		case strings.has_prefix(act, "Move@"):
 			x, y := input_parse_point(item, act[5:])
@@ -200,7 +206,7 @@ input_script_step :: proc(frame: u32) {
 	for _ in 0 ..< len(input_taps) {
 		due := -1
 		for t, i in input_taps {
-			if t.frame <= frame {due = i; break}
+			if t.play ? lockstep && i64(t.frame) <= vframe : t.frame <= frame {due = i; break}
 		}
 		if due < 0 {return}
 		t := input_taps[due]

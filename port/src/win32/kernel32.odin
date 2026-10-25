@@ -216,6 +216,14 @@ VA_LO :: 0x80000000
 VA_HI :: 0xf0000000
 va_top: u32 = VA_LO
 
+// Play's reservations from VA_PLAY up, as heap_play.
+VA_PLAY :: 0xb0000000
+
+va_play :: proc() {
+	if va_top > VA_PLAY {x86.fatal("VirtualAlloc: %08x in use before play, past %08x", va_top, VA_PLAY)}
+	va_top = VA_PLAY
+}
+
 // Reservations come from a bump region; commit of an address already handed
 // out returns it unchanged. Memory is never released.
 VirtualAlloc :: proc() {

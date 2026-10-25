@@ -1,9 +1,10 @@
-// Lockstep: every peer of an online game runs the whole game from boot on
-// the same inputs, so everything the guest reads must follow from those
-// inputs alone. The host clock gives way to a virtual one that a presented
-// frame moves on by LOCK_STEP, a Sleep by its length and each clock read by
-// LOCK_READ, so a loop that waits on the clock still ends. The wall clock
-// the guest sees is the host's at the handshake plus the virtual clock.
+// Lockstep: every peer of an online game runs the game from the start of
+// play (the host's New Game or Load Game) on the same inputs, so everything
+// the guest reads from there must follow from those inputs alone. The host
+// clock gives way to a virtual one that a presented frame moves on by
+// LOCK_STEP, a Sleep by its length and each clock read by LOCK_READ, so a
+// loop that waits on the clock still ends. The wall clock the guest sees is
+// the host's at the start plus the virtual clock since.
 // WHY: docs/hle.md §11
 package win32
 
@@ -18,22 +19,59 @@ LOCK_RATE :: 60
 LOCK_STEP :: time.Second / LOCK_RATE
 LOCK_READ :: time.Microsecond
 
-// The virtual clock, frames presented under it and the wall clock at its 0
-// as Unix nanoseconds.
+// The virtual clock, frames presented under it, the clock at the start and
+// the wall clock at its 0 as Unix nanoseconds.
 vclock: time.Duration
 vframe: i64
+lock_clock0: time.Duration
 lock_epoch: i64
 
-// Turns lockstep on, before the settings load; JE_LOCKSTEP alone (no net)
-// runs from LOCK_EPOCH_SOLO on the local pads, to test that two runs on the
-// same input stay the same.
+// Play starts at the next Present (lock_start): set at the menu row that
+// starts it.
+lock_pending := false
+// JE_LOCKSTEP alone (no net): lockstep from New Game or Load Game on the
+// local pads, the wall clock from LOCK_EPOCH_SOLO and the virtual clock from
+// LOCK_CLOCK_SOLO, to test that two runs on the same input stay the same.
+lock_solo := false
 LOCK_EPOCH_SOLO :: 1_767_225_600_000_000_000 // 2026-01-01
-lockstep_start :: proc() {
+LOCK_CLOCK_SOLO :: time.Hour
+
+// Native code's resets of what the game's play reads, at lock_begin.
+lock_begin_hook: proc()
+
+lock_start :: proc() {
+	lock_pending = false
+	if net_on {
+		net_begin()
+	} else {
+		lock_begin(max(host_now() + time.Second, LOCK_CLOCK_SOLO), LOCK_EPOCH_SOLO)
+	}
+}
+
+// Turns lockstep on with the virtual clock at clock0 and the wall clock at
+// epoch. What the peers' menus did differently before is reset: the sound
+// mixed, the input the guest has yet to read, the window's focus.
+lock_begin :: proc(clock0: time.Duration, epoch: i64) {
 	lockstep = true
-	lock_scratch_make()
-	lock_epoch = LOCK_EPOCH_SOLO
+	if lock_dir == "" {lock_scratch_make()}
+	vclock, vframe, lock_clock0 = clock0, 0, clock0
+	lock_epoch = epoch - i64(clock0)
+	pad_in = {}
+	ds_mixed = i64(clock0) * DS_RATE / i64(time.Second) / DS_CHUNK * DS_CHUNK
 	fps_cap = LOCK_RATE
 	x86.frame_rate = LOCK_RATE
+	clear(&queue)
+	di_keys, di_buttons = {}, {}
+	for &d in di_devs {
+		clear(&d.events)
+		d.overflow, d.dx, d.dy, d.dz = false, 0, 0, 0
+	}
+	if heap_floor != HEAP_PLAY {
+		heap_play()
+		va_play()
+	}
+	post(WM_ACTIVATEAPP, 1, 0); post(WM_ACTIVATE, 1, 0); post(WM_SETFOCUS, 0, 0)
+	if lock_begin_hook != nil {lock_begin_hook()}
 }
 
 // The game's scratch folder (the save being loaded or written, its image)
@@ -108,14 +146,14 @@ wall_now :: proc() -> i64 {
 // and pad_in holds the next frame's inputs.
 lock_frame :: proc() {
 	vframe += 1
-	vclock = max(vclock, time.Duration(vframe) * LOCK_STEP)
+	vclock = max(vclock, lock_clock0 + time.Duration(vframe) * LOCK_STEP)
 	if net_on {
 		net_frame(vframe + 1, pad_sample(pad))
 	} else {
 		pad_in = {pad_sample(pad), pad_sample(pad2)}
 	}
 	if lock_hash_every > 0 && (vframe + 1) % lock_hash_every == 0 {
-		fmt.eprintfln("lockstep: frame %d hash %016x clock %d mixed %d", vframe + 1, state_hash(), i64(vclock), ds_mixed)
+		fmt.eprintfln("lockstep: frame %d hash %016x clock %d mixed %d", vframe + 1, net_state_hash(), i64(vclock - lock_clock0), ds_mixed)
 	}
 	if vframe + 1 == lock_dump_frame {lock_dump()}
 }
@@ -131,7 +169,7 @@ lock_dump :: proc() {
 	parts := [3]struct {
 		ext:    string,
 		lo, hi: u32,
-	}{{"img", NET_IMG_LO, NET_IMG_HI}, {"heap", HEAP_LO, heap_top}, {"va", VA_LO, va_top}}
+	}{{"img", NET_IMG_LO, NET_IMG_HI}, {"heap", heap_floor, heap_top}, {"va", VA_LO, va_top}}
 	for d in parts {
 		path := fmt.tprintf("%s.%s", lock_dump_path, d.ext)
 		if err := os.write_entire_file(path, x86.mem[d.lo:d.hi]); err != nil {fmt.eprintfln("lockstep: cannot write %s: %v", path, err)}
@@ -139,7 +177,7 @@ lock_dump :: proc() {
 	fmt.eprintfln("lockstep: frame %d dumped to %s", vframe + 1, lock_dump_path)
 }
 
-// JE_LOCKSTEP=n: log the state hash every n frames, to compare two runs.
+// JE_LOCKSTEP=n: log the state hash every n frames of play, to compare two runs.
 lock_hash_every: i64
 
 // Host time since boot in milliseconds, for message and input event times.

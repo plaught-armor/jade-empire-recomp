@@ -44,27 +44,31 @@ main :: proc() {
 	}
 	// The port's settings: JadeEmpire.ini [Port], then JE_<key>.
 	// WHY: docs/recompiler.md §11
-	net_host := os.get_env("JE_NET_HOST", context.allocator)
-	net_join := os.get_env("JE_NET_JOIN", context.allocator)
-	net_open := os.get_env("JE_NET_OPEN", context.temp_allocator) != ""
-	win32.net_menu = os.get_env("JE_NET_MENU", context.temp_allocator) != ""
 	native.menu_error = os.get_env("JE_NET_ERROR", context.allocator)
-	solo := os.get_env("JE_LOCKSTEP", context.temp_allocator)
-	if net_host != "" || net_join != "" || solo != "" {
-		win32.lockstep_start()
-		win32.net_on = net_host != "" || net_join != ""
+	if solo := os.get_env("JE_LOCKSTEP", context.temp_allocator); solo != "" {
+		win32.lock_solo = true
 		if n, ok := strconv.parse_int(solo, 10); ok {win32.lock_hash_every = i64(n)}
-		dump := os.get_env("JE_LOCK_DUMP", context.allocator)
-		if i := strings.index_byte(dump, ':'); i > 0 {
-			if n, ok := strconv.parse_int(dump[:i], 10); ok {win32.lock_dump_frame, win32.lock_dump_path = i64(n), dump[i + 1:]}
-		}
+	}
+	dump := os.get_env("JE_LOCK_DUMP", context.allocator)
+	if i := strings.index_byte(dump, ':'); i > 0 {
+		if n, ok := strconv.parse_int(dump[:i], 10); ok {win32.lock_dump_frame, win32.lock_dump_path = i64(n), dump[i + 1:]}
 	}
 	native.settings_load()
 	native.menu_online_init()
+	native.sync_init()
 	hero := native.coop_hero_pick()
-	if win32.net_on {
-		hero = win32.net_connect(net_host, net_join, exe, native.settings_vals(), hero, net_open)
-		if win32.net_settings != nil {native.settings_sync(win32.net_settings)}
+	// JE_NET_HOST=port / JE_NET_JOIN=host:port: the lobby open from boot, as
+	// the main menu's Online rows open it.
+	err := ""
+	if p := os.get_env("JE_NET_HOST", context.temp_allocator); p != "" {
+		port, ok := strconv.parse_int(p, 10)
+		err = ok ? win32.net_host_open(port) : fmt.tprintf("JE_NET_HOST=%s is no port", p)
+	} else if a := os.get_env("JE_NET_JOIN", context.allocator); a != "" {
+		err = win32.net_join_open(a, hero)
+	}
+	if err != "" {
+		fmt.eprintln("net:", err)
+		os.exit(1)
 	}
 	native.settings_boot()
 	native.dodge_init()

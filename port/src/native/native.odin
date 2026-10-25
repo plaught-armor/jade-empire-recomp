@@ -40,6 +40,7 @@ FUNCS := [?]Entry{
 	{0x0045d6b0, Collide_0045d6b0, &guest_collide},
 	{0x00463570, Player_Control_00463570, &guest_player_control},
 	{0x00464aa0, Control_Frame_00464aa0, &guest_control_frame},
+	{0x004d7e70, Crowd_Update_004d7e70, &guest_crowd_update},
 	{0x0051e090, Gui_Draw_0051e090, &guest_gui_draw},
 	{0x00424700, Get_Player_00424700, &guest_get_player},
 	{0x005df230, Scene_Tick_005df230, &guest_scene_tick},
@@ -69,6 +70,8 @@ FUNCS := [?]Entry{
 	{0x005704c0, Cont_Next_005704c0, &guest_cont_next},
 	{0x00570650, Cont_Defaults_00570650, &guest_cont_defaults},
 	{0x00573a10, Cont_Ctor_00573a10, &guest_cont_ctor},
+	{0x0059ad80, Render_States_0059ad80, &guest_render_states},
+	{0x0059cba0, Texture_Get_0059cba0, &guest_texture_get},
 	{0x0059e170, Node_GetWorldPosOri_0059e170, &guest_node_world},
 	{0x005aa990, Object_BoxZGap_005aa990, &guest_box_zgap},
 	{0x005b6e60, Quat_Unpack32_005b6e60, &guest_quat_unpack32},
@@ -94,6 +97,8 @@ FUNCS := [?]Entry{
 	{0x006678e0, Xb_Input_006678e0, &guest_xb_input},
 	{0x0067f0e0, Movie_Draw_0067f0e0, &guest_movie_draw},
 	{0x006b32a0, ftol2_006b32a0, &guest_ftol2},
+	{0x006b2cb9, srand_006b2cb9, &guest_srand},
+	{0x006b2cc3, rand_006b2cc3, &guest_rand},
 	{0x006ba8f0, ceil_006ba8f0, &guest_ceil},
 }
 

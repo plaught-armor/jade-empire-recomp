@@ -1,15 +1,16 @@
 // The online game's files (net.odin): the peer that joins plays on the
-// host's Save as it was at the host's boot, the host's JadeEmpire.ini
-// outside [Port] and the host's gameplay settings, not on its own. At boot
-// the host lists Save (names and sizes) into a manifest with the ini and the
-// settings; the joining peer fetches it before its boot and builds a mirror
-// of Save in a temp folder, each file at its size but unread, which
-// host_path maps the guest's Save onto. A mirror file's contents are fetched
-// from the host, deflated, when the guest first opens it, so only the save
-// loaded and the thumbnails shown cross the network. On the host, a boot
-// file the game is about to change or delete is copied aside first, so a
-// peer that joins later is served Save as it was at boot. Nothing the
-// joining peer's game writes reaches its own Save or ini.
+// host's Save as it was at the start of play, the host's JadeEmpire.ini
+// outside [Port], the host's gameplay settings and game options, not on its
+// own. At the start the host lists Save (names and sizes) into a manifest
+// with the ini, the settings and the options; the joining peer fetches it
+// before it starts and builds a mirror of Save in a temp folder, each file
+// at its size but unread, which host_path maps the guest's Save onto. A
+// mirror file's contents are fetched from the host, deflated, when the
+// guest first opens it, so only the save loaded and the thumbnails shown
+// cross the network. On the host, a start file the game is about to change
+// or delete is copied aside first, so a peer that joins later is served
+// Save as it was at the start. Nothing the joining peer's game writes
+// reaches its own Save or ini.
 // WHY: docs/hle.md §11
 package win32
 
@@ -27,10 +28,12 @@ NET_BLOB_MANIFEST :: 0
 // On the joining peer: the mirror of the host's Save, which host_path maps
 // the guest's Save onto (it does not exist when the host had no Save), the
 // host's ini that it maps JadeEmpire.ini onto, and the host's settings,
-// every Setting_Id's value in order, for native code to put in force.
+// every Setting_Id's value in order, and the host's game options, for
+// native code to put in force.
 net_save: string
 net_ini: string
 net_settings: []i32
+net_opts: []u8
 
 @(private = "file")
 Save_Entry :: struct {
@@ -49,19 +52,19 @@ Blob :: struct {
 Net_Save :: struct {
 	tmp:      string, // a temp folder of the mirror and ini, or of the host's copies
 	entries:  [dynamic]Save_Entry,
-	// Each boot file's host path to its entry: on the host, under Save; on
+	// Each start file's host path to its entry: on the host, under Save; on
 	// the joining peer, under net_save, for the files not yet fetched.
 	files:    map[string]int,
-	kept:     map[int]string, // on the host: a boot file the game changed, as it was ("" when it could not be kept)
+	kept:     map[int]string, // on the host: a start file the game changed, as it was ("" when it could not be kept)
 	manifest: []u8,
 	blobs:    map[u32]Blob, // on the host: each blob as first deflated
 }
 @(private = "file")
 ns: Net_Save
 
-// On the host before boot: lists Save and makes the manifest of it, the ini
-// and settings.
-net_save_host :: proc(settings: []i32) {
+// On the host at the start of play: lists Save and makes the manifest of
+// it, the ini, settings and game options opts.
+net_save_host :: proc(settings: []i32, opts: []u8) {
 	root := fmt.tprintf("./%s", NET_SAVE_DIR)
 	has_save := os.is_dir(root)
 	if has_save {save_walk(root, "")}
@@ -85,8 +88,10 @@ net_save_host :: proc(settings: []i32) {
 	}
 	put(&b, u32(len(settings)))
 	for v in settings {put(&b, v)}
+	put(&b, u32(len(opts)))
+	append(&b, ..opts)
 	ns.manifest = b[:]
-	fmt.eprintfln("net: serving Save as at boot, %d entries", len(ns.entries))
+	fmt.eprintfln("net: serving Save as at the start, %d entries", len(ns.entries))
 }
 
 @(private = "file")
@@ -147,8 +152,8 @@ net_save_bad :: proc() -> ! {
 	net_fail("the save list from the host is malformed")
 }
 
-// On the joining peer before boot: the host's manifest m into the mirror of
-// its Save, its ini and net_settings.
+// On the joining peer before it starts: the host's manifest m into the
+// mirror of its Save, its ini, net_settings and net_opts.
 net_save_join :: proc(m: []u8) {
 	tmp, err := os.temp_directory(context.temp_allocator)
 	if err == nil {ns.tmp, err = os.make_directory_temp(tmp, "jade_net_*", context.allocator)}
@@ -183,6 +188,7 @@ net_save_join :: proc(m: []u8) {
 	}
 	net_settings = make([]i32, int(get(&b, u32)))
 	for &v in net_settings {v = get(&b, i32)}
+	net_opts = slice.clone(get_bytes(&b, int(get(&b, u32))))
 	fmt.eprintfln("net: playing on the host's Save (%d entries, %d MB to fetch as opened), ini and settings", n, bytes >> 20)
 }
 
@@ -195,7 +201,7 @@ placeholder :: proc(p: string, size: i64) -> os.Error {
 }
 
 // CreateFileA on an existing file at host path p, before opening it: on the
-// host, a boot file opened to write is copied aside first; on the joining
+// host, a start file opened to write is copied aside first; on the joining
 // peer, a mirror file is fetched unless the open empties it.
 net_save_open :: proc(p: string, write: bool, disp: u32) {
 	if !net_on {return}
@@ -217,7 +223,7 @@ net_save_open :: proc(p: string, write: bool, disp: u32) {
 }
 
 // DeleteFileA of the file at host path p, before it goes: on the host a
-// boot file is copied aside; on the joining peer a mirror file is no
+// start file is copied aside; on the joining peer a mirror file is no
 // longer fetched.
 net_save_remove :: proc(p: string) {
 	if !net_on {return}
@@ -231,7 +237,7 @@ net_save_remove :: proc(p: string) {
 	delete(key)
 }
 
-// On the host: boot file i, at p, copied aside once.
+// On the host: start file i, at p, copied aside once.
 @(private = "file")
 keep :: proc(i: int, p: string) {
 	if i in ns.kept {return}
@@ -247,7 +253,7 @@ keep :: proc(i: int, p: string) {
 		err = os.copy_file(dst, p)
 	}
 	if err != nil {
-		fmt.eprintfln("net: cannot keep %s as at boot (%v); a peer that joins cannot have it", p, err)
+		fmt.eprintfln("net: cannot keep %s as at the start (%v); a peer that joins cannot have it", p, err)
 		delete(dst)
 		dst = ""
 	}

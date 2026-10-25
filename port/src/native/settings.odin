@@ -87,7 +87,7 @@ Setting :: struct {
 SETTINGS := [Setting_Id]Setting {
 	.Fps = {
 		"FPS", "Frame Rate",
-		"Highest frame rate. Changes to or from 30 apply after a restart.",
+		"Highest frame rate. Online games run at 60.",
 		{{30, "30"}, {60, "60"}, {90, "90"}, {120, "120"}, {144, "144"}, {165, "165"}, {240, "240"}, {0, "Unlimited"}},
 		30,
 	},
@@ -245,11 +245,6 @@ SETTINGS := [Setting_Id]Setting {
 setting_val: [Setting_Id]i32
 setting_edit: [Setting_Id]i32
 
-// The game's 30 fps limit (ClampFPS) is read once, at boot; kept then, a
-// frame rate change waits for a restart.
-@(private = "file")
-fps_clamped: bool
-
 @(private = "file")
 REVERB_GAINS := [?]f32{0, 0.5, 1, 2}
 
@@ -359,31 +354,31 @@ settings_vals :: proc() -> []i32 {
 	return slice.enumerated_array(&setting_val)
 }
 
-// On an online game's joining peer before settings_boot: vals, the host's
-// settings_vals, in place of ours for every setting that changes the game.
-// Player 2's hero stays ours, the pick our hello carried.
+// On an online game's joining peer at the start of play: vals, the host's
+// settings_vals, in force in place of ours for every setting that changes
+// the game. Player 2's hero stays ours, the pick our hello carried.
 settings_sync :: proc(vals: []i32) {
 	if len(vals) != len(Setting_Id) {x86.fatal("net: the host sent %d settings, not %d", len(vals), len(Setting_Id))}
 	for id in Setting_Id {
 		if id in SETTINGS_LOOK || id == .P2_Hero || setting_val[id] == vals[int(id)] {continue}
 		fmt.eprintfln("net: %s %d, the host's (ours %d)", SETTINGS[id].key, vals[int(id)], setting_val[id])
 		setting_val[id] = vals[int(id)]
+		setting_apply(id, false)
 	}
 }
 
 // Puts setting_val[id] in force; at boot, also what only boot can set.
-@(private = "file")
 setting_apply :: proc(id: Setting_Id, boot: bool) {
 	v := setting_val[id]
 	switch id {
 	case .Fps:
-		// Lockstep runs at its own fixed rate (win32/lockstep.odin).
+		// The game's own 30 fps limit (ClampFPS) is read once, at boot, and
+		// only waits: always off, and Present holds every rate, 30 included,
+		// so a change is live and lockstep (win32/lockstep.odin) can run at
+		// its own fixed rate.
+		if boot {win32.ini_override("Game", "ClampFPS", "0")}
 		if win32.lockstep {v = win32.LOCK_RATE}
-		if boot {
-			fps_clamped = v == 30
-			if !fps_clamped {win32.ini_override("Game", "ClampFPS", "0")}
-		}
-		if !fps_clamped {win32.fps_cap = u32(max(v, 0))}
+		win32.fps_cap = u32(max(v, 0))
 	case .Menu_Fps:
 		win32.menu_fps_cap = u32(max(v, 0))
 	case .Scale:

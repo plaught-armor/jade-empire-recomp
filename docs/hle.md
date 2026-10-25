@@ -294,8 +294,10 @@ uses host time, so nothing else waits on it.
 ## §11 Lockstep and online play
 
 Online co-op is input lockstep (`win32/lockstep.odin`, `win32/net.odin`): each
-peer runs the whole game from boot, and the only thing the peers exchange is
-pad input. Every guest-visible value must then follow from the inputs alone.
+peer runs the game from the start of play (the host's New Game or Load Game;
+from boot before v153), and the only thing the peers exchange is pad input,
+plus the host's creature floats as a drift correction (v153, below). Every
+guest-visible value must then follow from the inputs alone.
 `JE_NET_HOST=port` hosts (player 1), `JE_NET_JOIN=host:port` joins (player 2,
 whose pad drives the henchman through the couch co-op path, docs/recompiler.md
 §10; co-op is forced on). `JE_LOCKSTEP=n` turns lockstep on without a network
@@ -545,6 +547,69 @@ WAN link, two rejoins in a row. The peers then still had to start from the
 same config and `Save`, moved between machines by hand; since v149 the
 joiner takes the host's.
 
+**Lobby in the main menu** (v153, protocol version 11). Host and Join no
+longer relaunch: they open a lobby in the running menu (`net_host_open`,
+`net_join_open`; `JE_NET_HOST`/`JE_NET_JOIN` open the same lobby at boot).
+The joiner says hello every `NET_HELLO_EVERY` until welcomed; the host
+welcomes a hello whose config matches, and both show the lobby's news
+(`net_news_take`: joined, left, lost, no answer) in the menu's help line.
+Lockstep starts at the host's New Game or Load Game row: the host sets
+`lock_pending`, makes the `Save` manifest then (with its game options), and
+plays alone from the next Present; the peer in the lobby, or one that joins
+later, comes in by the rejoin path, so every join is a rejoin. The joiner
+takes the host's options and settings and activates the same row
+(`MENU_ACTIVATE`) in its own menu. Leave in play still relaunches, since
+lockstep play cannot go back to the menu's state; Leave in the lobby only
+closes it.
+
+Since the peers' menus ran on their own before play, `lock_begin` resets
+what play reads, and native code (`sync_begin`, `native/sync.odin`) the
+rest:
+
+- The CRT `rand`/`srand` state is set to 1, the game's frame counters
+  (0x76c918, 0x76c91c) to 0, the AI dice reseeded.
+- The game options that change play (CClientOptions at [app+0xb8]:
+  difficulty, auto-target and the like) and the app's input block
+  (app+0x604..0x7d0, the control scheme and bindings) are the host's
+  (`sync_opts`, sent in the manifest). Volumes, subtitles, rumble and the
+  mini-map stay each peer's own.
+- Heap: from play on, blocks come from `HEAP_PLAY` (0x40000000) up, and
+  blocks freed below it stay unused, so where play's blocks lie (the game
+  orders some work by address) follows from play alone. VirtualAlloc
+  reservations likewise from `VA_PLAY` (0xb0000000).
+- Render caches the menus left unlike: blocks allocated while `heap_render`
+  is set come from `HEAP_RENDER` (0x70000000) up, with their own free lists,
+  so they move no play block. Native hooks set it around the texture cache's
+  get (0x59cba0), the render state block table (0x59ad80), the scene's draw
+  phases 1 and 2 (0x5df230) and the GUI draw (0x51e090).
+- Random streams: `rand` calls from the renderer (return address
+  0x5e0000..0x640000) take a stream of their own, since how much it draws
+  follows the look settings; a crowd's update (0x4d7e70) runs on streams of
+  its own for the CRT's and the game's LCG ([0x76c588]+0x24), since it draws
+  only near the camera, which each peer has its own of.
+- The frame rate is 60 online on both peers (the game's ClampFPS is forced
+  off at boot so a rate change is live).
+
+**Drift correction** (`Net_Fix`). The creatures' positions, facings and
+health drift between the peers by a last bit now and then (seen from about
+frame 6000, 1e-5 to 1e-6), so the hash leaves them out. At each hash frame
+both peers snapshot them (`net_fix_snap`, `NET_FIX_KEEP` 4 kept); the host
+sends its snapshot unreliably, in chunks of `NET_FIX_CHUNK` 40 entries {id,
+7 floats}. When the joiner reaches a frame it holds both for, it adds the
+host's value less its own to each creature still in play, and logs `net:
+creature ID drifted D from the host's at frame N` past 0.25. A rejoin's
+replay applies none.
+
+`JE_INPUT_SCRIPT` takes `+N:Action`, N counting frames of lockstep play, for
+runs whose menus differ in length.
+
+Tested headless on localhost: with the joiner in the lobby from the start,
+hashes equal through frame 11340 and drift held at 1e-5 or less. With the
+joiner joining 4000 frames into the host's menu, one run held through 11460;
+another desynced at 6660 (creature set different), an online-only
+divergence not found yet: two solo `JE_LOCKSTEP=60` runs on the same script
+agree through 11280.
+
 **Player 2's hero on an open host** (v148, protocol version 8). A peer that
 joins a running game plays its own pick of hero, not the one the host booted
 with. The host keeps a list of hero switches, {frame, hero}: at each
@@ -640,10 +705,13 @@ about 4700 frames on localhost this is 9.6 bytes a packet against 88.6 for
 version 2 (41-byte header, 16 bytes an input), 9.3 times less, before the
 28 bytes of UDP and IP headers.
 
-**Desync check.** Every 60 frames each peer sends `state_hash()`: XXH3 of
-the game's .data (0x75b000..0x889d74), the port's data page
-(0xa00000..0xa01000), the heap up to `heap_top`, the
-VirtualAlloc region up to `va_top`, `vclock` and the mixed sample count. A
+**Desync check.** Every 60 frames each peer sends a state hash. Before v153
+it was XXH3 of the game's .data (0x75b000..0x889d74), the port's data page
+(0xa00000..0xa01000), the heap up to `heap_top`, the VirtualAlloc region up
+to `va_top`, `vclock` and the mixed sample count. Since v153 it is
+`net_state_hash` (`native/sync.odin`): the CRT random state, the play frame
+and the ids of the player and every dynamic creature, since memory outside
+play keeps what each peer's menus left (lobby, below). A
 mismatch logs `net: desync at frame N` once. The `JE_LOCKSTEP` lines carry
 the clock and the mixed count as well, and `JE_LOCK_DUMP=frame:path` writes
 the memory at that frame to `path.img` (the whole image, 0x400000..0xa01000),

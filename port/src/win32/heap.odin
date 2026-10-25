@@ -13,6 +13,28 @@ MAX_CLASS :: 30
 heap_top: u32 = HEAP_LO
 free_lists: [MAX_CLASS + 1][dynamic]u32
 
+// Play's own part of the heap, from heap_play (lockstep.odin) on: blocks
+// come from HEAP_PLAY up, and blocks below it that are freed stay unused,
+// so where play's blocks lie follows from play alone, not from what each
+// peer's menus allocated before. The game orders some of its work by
+// address. WHY: docs/hle.md §11
+HEAP_PLAY :: 0x40000000
+heap_floor: u32 = HEAP_LO
+
+// Render's own part of the heap in play: blocks allocated while heap_render
+// is set (native code sets it around the texture cache, which each peer's
+// menus left unlike) come from HEAP_RENDER up, so they move no play block.
+HEAP_RENDER :: 0x70000000
+heap_render := 0
+render_top: u32 = HEAP_RENDER
+render_free: [MAX_CLASS + 1][dynamic]u32
+
+heap_play :: proc() {
+	if heap_top > HEAP_PLAY {x86.fatal("heap: %08x in use before play, past %08x", heap_top, HEAP_PLAY)}
+	heap_top, heap_floor = HEAP_PLAY, HEAP_PLAY
+	for &l in free_lists {clear(&l)}
+}
+
 size_class :: proc(n: u32) -> u32 {
 	k: u32 = MIN_CLASS
 	for k < MAX_CLASS && (u32(1) << k) < n + HDR {
@@ -27,16 +49,21 @@ heap_alloc :: proc(n: u32, zero: bool) -> u32 {
 		return 0
 	}
 	k := size_class(n)
+	lists, top, hi := &free_lists, &heap_top, u32(HEAP_HI)
+	if heap_floor == HEAP_PLAY {
+		hi = HEAP_RENDER
+		if heap_render > 0 {lists, top, hi = &render_free, &render_top, HEAP_HI}
+	}
 	blk: u32
-	if len(free_lists[k]) > 0 {
-		blk = pop(&free_lists[k])
+	if len(lists[k]) > 0 {
+		blk = pop(&lists[k])
 	} else {
 		sz := u32(1) << k
-		if heap_top + sz > HEAP_HI || heap_top + sz < heap_top {
+		if top^ + sz > hi || top^ + sz < top^ {
 			return 0
 		}
-		blk = heap_top
-		heap_top += sz
+		blk = top^
+		top^ += sz
 	}
 	x86.wr32(blk, n)
 	x86.wr32(blk + 4, k)
@@ -50,7 +77,8 @@ heap_alloc :: proc(n: u32, zero: bool) -> u32 {
 
 heap_check :: proc(p: u32) -> u32 {
 	blk := p - HDR
-	if p < HEAP_LO + HDR || p >= heap_top || x86.rd32(blk + 8) != 0x48454150 {
+	in_render := p >= HEAP_RENDER + HDR && p < render_top
+	if p < HEAP_LO + HDR || (p >= heap_top && !in_render) || x86.rd32(blk + 8) != 0x48454150 {
 		x86.fatal("heap: bad pointer %08x", p)
 	}
 	return blk
@@ -62,7 +90,8 @@ heap_free :: proc(p: u32) {
 	}
 	blk := heap_check(p)
 	x86.wr32(blk + 8, 0x45455246) // "FREE"
-	append(&free_lists[x86.rd32(blk + 4)], blk)
+	if blk < heap_floor {return}
+	append(blk >= HEAP_RENDER && heap_floor == HEAP_PLAY ? &render_free[x86.rd32(blk + 4)] : &free_lists[x86.rd32(blk + 4)], blk)
 }
 
 heap_size :: proc(p: u32) -> u32 {
@@ -82,7 +111,11 @@ heap_realloc :: proc(p: u32, n: u32, zero: bool) -> u32 {
 		x86.wr32(blk, n)
 		return p
 	}
+	// A grown block stays in its part of the heap.
+	render := heap_render
+	heap_render = blk >= HEAP_RENDER && heap_floor == HEAP_PLAY ? 1 : 0
 	q := heap_alloc(n, zero)
+	heap_render = render
 	if q == 0 {
 		return 0
 	}

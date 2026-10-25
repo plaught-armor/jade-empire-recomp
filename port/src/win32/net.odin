@@ -1,25 +1,32 @@
 // Online play over UDP, input lockstep (lockstep.odin): the host is player
-// 1 and the peer that joins player 2. Each peer sends the input of its own
-// pad a delay of frames ahead of the frame it is for, and a frame starts only
-// once both inputs for it are in. The host picks the delay from round trips
-// it times in the handshake; then each peer moves its own with the round
-// trips its inputs take to be acked. Every NET_HASH_EVERY frames
-// each peer sends a hash of guest memory; a mismatch is a desync, logged.
-// When the peer that joined leaves or is lost, the host plays on alone:
-// player 2's input is released, so player 2 is out as with a couch pad off.
-// The host keeps every frame's inputs and hashes from boot, so a peer that
-// joins again while it plays alone (or after a restart) rejoins: it boots as
-// the host did, replays the log as fast as frames go, then takes player 2
-// back from a frame the host names. The joining peer always plays on the
-// host's Save as it was at the host's boot, its JadeEmpire.ini and its
-// gameplay settings, fetched from the host (net_save.odin), so a rejoin
-// boots as the host's boot did. An open host (JE_NET_OPEN) plays alone from
-// boot, so every peer joins it that way.
-// JE_NET_HOST=port hosts, JE_NET_JOIN=host:port joins; JE_NET_DELAY on the
-// host sets the delay in frames instead, and on either peer keeps its fixed.
-// A game the main menu started (JE_NET_MENU, native/menu_online.odin) that
-// fails or ends for the joining peer starts over offline (relaunch.odin)
-// rather than exiting.
+// 1 and the peer that joins player 2. The peers meet in the main menu, a
+// lobby: the host opens its port and the joining peer says hello until the
+// host welcomes it. Play starts at the host's New Game or Load Game: both
+// peers reset what the game's play reads (lock_begin), so from there they run
+// the same game on the same inputs, whatever each did in its menu before.
+// Each peer sends the input of its own pad a delay of frames ahead of the
+// frame it is for, and a frame starts only once both inputs for it are in;
+// each peer moves its own delay with the round trips its inputs take to be
+// acked. Every NET_HASH_EVERY frames each peer sends a hash of the game's
+// state (net_state_hash); a mismatch is a desync, logged. The hash leaves
+// out the creatures' positions, facings and health, floats that drift by a
+// last bit between the peers' runs: the host sends its own of them at each
+// hash frame (Net_Fix), and the joining peer moves its creatures on by how
+// far the host's were from its own then.
+// The host starts play alone and keeps every frame's inputs and hashes from
+// the start, so the peer in its lobby, or one that joins later or again,
+// joins by the rejoin path: it starts the same row in its own menu, replays
+// the log as fast as frames go, then takes player 2 from a frame the host
+// names. When the peer that joined leaves or is lost, the host plays on
+// alone: player 2's input is released, so player 2 is out as with a couch
+// pad off. The joining peer always plays on the host's Save as it was at the
+// start, its JadeEmpire.ini, gameplay settings and game options, fetched
+// from the host (net_save.odin).
+// JE_NET_HOST=port opens the host's lobby at boot, JE_NET_JOIN=host:port
+// joins one; JE_NET_DELAY on the host sets the delay in frames instead, and
+// on either peer keeps its fixed. A game the main menu started (net_menu,
+// native/menu_online.odin) that fails or ends for the joining peer starts
+// over offline (relaunch.odin) rather than exiting.
 // WHY: docs/hle.md §11
 package win32
 
@@ -36,21 +43,20 @@ import "vendor:zlib"
 import "../x86"
 
 NET_MAGIC :: 0x494e454a // "JENI"
-NET_VERSION :: 10
-// The delay covers half the round trip most pings came back within
+NET_VERSION :: 11
+// The delay covers half the round trip most inputs were acked within
 // (NET_PING_KEEP of NET_PINGS) plus NET_DELAY_MARGIN frames for frame-time
 // jitter, and is at least NET_DELAY_MIN.
 NET_PINGS :: 16
 NET_PING_KEEP :: 14
-NET_PING_WAIT :: 250 * time.Millisecond
 NET_DELAY_MARGIN :: 2
 NET_DELAY_MIN :: 3
 NET_DELAY_MAX :: 30
-NET_DELAY_OPEN :: 4 // an open host's delay, before round trips move it
-// In play, the delay a peer's inputs need is the same pick over the last
-// NET_RTT_N round trips from an input made to the peer's ack of it. The
-// delay rises a frame a frame while it is short, and once none has asked for
-// as much for NET_CALM, falls a frame a frame to what they ask.
+NET_DELAY_START :: 4 // the delay at the start of play, before round trips move it
+// The round trips are those of the last NET_RTT_N inputs, from an input made
+// to the peer's ack of it. The delay rises a frame a frame while it is
+// short, and once none has asked for as much for NET_CALM, falls a frame a
+// frame to what they ask.
 NET_RTT_N :: 64
 NET_CALM :: time.Second
 NET_STALL :: time.Millisecond // a wait longer than this counts as a stall
@@ -63,7 +69,13 @@ NET_SEND_MAX :: 32 // inputs per packet
 NET_RESEND :: 5 * time.Millisecond
 NET_RESEND_MAX :: 250 * time.Millisecond
 NET_LOST :: 10 * time.Second
+// In the lobby the joining peer says hello every NET_HELLO_EVERY, which the
+// host answers; it gives up when no answer comes in NET_JOIN_WAIT.
+NET_HELLO_EVERY :: 100 * time.Millisecond
 NET_JOIN_WAIT :: 30 * time.Second
+// The virtual clock starts NET_CLOCK_LEAD past both peers' clocks, so no
+// peer's clock goes back at the start.
+NET_CLOCK_LEAD :: 10 * time.Second
 NET_HASH_EVERY :: 60
 // The guest image, the port's data page included (JE_LOCK_DUMP writes it all).
 NET_IMG_LO :: 0x00400000
@@ -95,7 +107,7 @@ NET_BLOB_ASK :: 50 * time.Millisecond
 // The most the joining peer takes the host's manifest to inflate to; a Save
 // of thousands of files with a long ini is well under 1 MB.
 NET_MANIFEST_MAX :: 16 << 20
-Net_Kind :: enum u8 {Input = 1, Hello, Welcome, Reject, Bye, Ping, Pong, Log_Req, Log, Ready, Handover, Blob_Req, Blob}
+Net_Kind :: enum u8 {Input = 1, Hello, Welcome, Reject, Bye, Log_Req, Log, Ready, Handover, Blob_Req, Blob, Fix}
 
 Net_Head :: struct #packed {
 	magic: u32,
@@ -111,28 +123,27 @@ Net_Config :: struct #packed {
 	files:   u64, // names and sizes under override and textures_hd
 }
 
-// hero: the hero the joining peer, player 2, picked.
+// hero: the hero the joining peer, player 2, picked; now: its host_now.
 Net_Hello :: struct #packed {
 	using head: Net_Head,
 	cfg:        Net_Config,
 	hero:       i32,
+	now:        i64,
 }
 
-// A ping from the host while it times round trips, echoed back as a pong.
-Net_Ping :: struct #packed {
-	using head: Net_Head,
-	seq:        u32,
-}
-
-// hero: player 2's hero, the one the hello carried, or for a rejoin the one
-// of the session's start; switches: for a rejoin, the hero switches of the
-// session so far, which its replay makes again.
+// The host's answer to a hello: in the lobby, play not started (rejoin
+// false), or play to join. Then epoch and clock0 are the wall clock and the
+// virtual clock at its start, row the menu row that started it (0 New Game,
+// 1 Load Game), delay the host's, hero player 2's at the start and switches
+// the hero switches of play so far, which the replay makes again.
 Net_Welcome :: struct #packed {
 	using head: Net_Head,
 	epoch:      i64,
+	clock0:     i64,
 	delay:      i32,
 	hero:       i32,
 	rejoin:     b8,
+	row:        u8,
 	switch_n:   u8,
 	switches:   [NET_SWITCH_MAX]Net_Switch,
 }
@@ -205,6 +216,35 @@ Net_Handover :: struct #packed {
 	delay:      i32,
 }
 
+// The host's creatures' state at a hash frame, count Net_Fix_Entry after it;
+// a frame's takes as many packets as NET_FIX_CHUNK leaves it. Sent once: one
+// lost leaves the drift to the next.
+Net_Fix :: struct #packed {
+	using head: Net_Head,
+	frame:      u32,
+	count:      u16,
+}
+// A creature's id and the floats of it native code corrects (native sync.odin).
+Net_Fix_Entry :: struct #packed {
+	id: u32,
+	v:  [7]f32,
+}
+NET_FIX_CHUNK :: 40
+NET_FIX_KEEP :: 4 // hash frames the joining peer keeps its own state of
+
+// Native code's: the state of every creature, at a hash frame; on the
+// joining peer, its creatures moved on by host less own, both of the same
+// frame.
+net_fix_take: proc(out: ^[dynamic]Net_Fix_Entry)
+net_fix_apply: proc(own, host: []Net_Fix_Entry, frame: i64)
+
+@(private = "file")
+Net_Fix_Chunk :: struct {
+	frame: i64,
+	n:     int,
+	e:     [NET_FIX_CHUNK]Net_Fix_Entry,
+}
+
 // An input packet: the kind byte alone for a head, as input is taken only
 // from the peer's address; ack, the last frame of the receiver's inputs the
 // sender has, and first, the first frame of those carried, as their low 16
@@ -236,7 +276,7 @@ NET_INPUT_MAX :: 1 + len(Pad_Axis) * 3 + 3 // bytes, one input at most
 
 net_on := false
 net_slot: int // the local player: 0 the host, 1 the peer that joined
-net_menu := false // JE_NET_MENU: the main menu started this game
+net_menu := false // the main menu opened the lobby
 
 @(private = "file")
 Net :: struct {
@@ -269,16 +309,23 @@ Net :: struct {
 	peer_frame:  i64, // the peer's last hash
 	peer_hash:   u64,
 	desynced:    bool,
+	// On both peers, their own creatures' state at the last hash frames; on
+	// the joining peer, the host's that came for frames it has yet to use.
+	fix_own:     [NET_FIX_KEEP]struct {
+		frame: i64,
+		e:     [dynamic]Net_Fix_Entry,
+	},
+	fix_in:      [dynamic]Net_Fix_Chunk,
 	alone:       bool, // the host, its peer gone: no input from a peer
 	// The host's every frame's inputs and every NET_HASH_EVERY frame's hash
-	// from boot, by frame and by frame / NET_HASH_EVERY, to serve a rejoin;
+	// from the start of play, by frame and by frame / NET_HASH_EVERY, to serve a rejoin;
 	// on a rejoining peer, those it has of them.
 	log:         [dynamic][2]Pad_Input,
 	hashes:      [dynamic]u64,
 	rejoin:      bool, // the joining peer, replaying the log
 	rejoining:   bool, // the host, alone with a peer rejoining
 	handover:    i64, // the frame the rejoining peer plays from, 0 before it is named
-	heard:       time.Tick, // last packet from the peer, while rejoining
+	heard:       time.Tick, // last packet from the peer, in the lobby or while rejoining
 	asked:       time.Tick, // last log ask
 	readied:     time.Tick, // last ready
 	host_top:    i64, // the host's last frame, as the log last said
@@ -293,83 +340,269 @@ Net :: struct {
 	blob_size:   u32,
 	blob_raw:    u32,
 	blob_known:  bool,
+	// The lobby: the joining peer's open and last hello; whether the host
+	// welcomed it, or on the host whether a peer is in the lobby, and that
+	// peer's host_now as its last hello said, heard then.
+	opened:      time.Tick,
+	said:        time.Tick,
+	welcomed:    bool,
+	peer_now:    time.Duration,
+	clock0:      i64, // the virtual clock at the start of play
+	row:         u8, // the menu row that started play
 }
 @(private = "file")
 nt: Net
 
-// Hosts on port or joins addr (host:port), then agrees with the peer on the
-// game's start; before boot, before the settings are in force. settings:
-// every setting's value, which the host sends the joining peer (net_save.odin);
-// hero: this peer's pick of player 2's hero; open: host without waiting,
-// alone until a peer joins. Returns player 2's hero: the joining peer's pick,
-// or an open host's own. The joining peer then has net_save, net_ini and
-// net_settings.
-net_connect :: proc(port: string, addr: string, exe: string, settings: []i32, hero: i32, open: bool) -> i32 {
+// The lobby: the socket open in the main menu before play (native
+// menu_online.odin), the host's to welcome a peer and the joining peer's to
+// say hello until the host starts play.
+net_lobby := false
+// On the joining peer in the lobby: the row the host started play with (0
+// New Game, 1 Load Game), for the menu to start too, or -1.
+net_start_row: i32 = -1
+// What the lobby has to tell the menu, until net_news_take; news_end: the
+// lobby closed with it.
+@(private = "file")
+news: string
+@(private = "file")
+news_end: bool
+
+// Opens the host's lobby on port; "" or why it cannot.
+net_host_open :: proc(port: int) -> string {
+	net_cfg_make()
+	sock, err := net.make_bound_udp_socket(net.IP4_Any, port)
+	if err != nil {return fmt.tprintf("cannot listen on port %d: %v", port, err)}
+	if net.set_blocking(sock, false) != nil {
+		net.close(sock)
+		return "cannot make the socket non-blocking"
+	}
+	nt.sock, nt.welcomed = sock, false
+	net_slot = 0
+	net_lobby = true
+	upnp_start(port)
+	fmt.eprintfln("net: hosting on port %d", port)
+	return ""
+}
+
+// Opens the joining peer's lobby with the host at addr (host:port), hero
+// its pick of player 2's hero; "" or why it cannot.
+net_join_open :: proc(addr: string, hero: i32) -> string {
+	net_cfg_make()
+	ep, err := net.resolve_ip4(addr)
+	if err != nil {return fmt.tprintf("cannot find %s: %v", addr, err)}
+	sock, serr := net.make_unbound_udp_socket(.IP4)
+	if serr != nil {return fmt.tprintf("cannot open a socket: %v", serr)}
+	if net.set_blocking(sock, false) != nil {
+		net.close(sock)
+		return "cannot make the socket non-blocking"
+	}
+	nt.sock, nt.peer, nt.pick, nt.welcomed = sock, ep, hero, false
+	nt.opened, nt.said = time.tick_now(), {}
+	net_slot = 1
+	net_start_row = -1
+	net_lobby = true
+	title_set(fmt.tprintf("joining %s", addr))
+	fmt.eprintfln("net: joining %s", net.endpoint_to_string(ep))
+	return ""
+}
+
+// Leaves the lobby: the peer told, the socket and the router's forward closed.
+net_lobby_close :: proc() {
+	if !net_lobby {return}
+	if nt.welcomed {
+		b := Net_Head{kind = .Bye}
+		for _ in 0 ..< 3 {net_send(&b)}
+	}
+	net.close(nt.sock)
+	nt.sock, nt.welcomed = 0, false
+	if net_slot == 0 {upnp_close()}
+	title_set("")
+	net_lobby, net_slot, net_start_row = false, 0, -1
+}
+
+// The lobby's news for the menu, once, and whether the lobby closed with it.
+net_news_take :: proc() -> (msg: string, ended: bool, ok: bool) {
+	if news == "" {return}
+	msg, ended, ok = news, news_end, true
+	news, news_end = "", false
+	return
+}
+
+@(private = "file")
+net_news_set :: proc(msg: string, ended := false) {
+	fmt.eprintln("net:", msg)
+	delete(news)
+	news, news_end = strings.clone(msg), ended
+}
+
+// The joining peer's lobby closed with msg, why.
+// bye: the host is told.
+@(private = "file")
+net_lobby_fail :: proc(msg: string, bye := true) {
+	nt.welcomed = nt.welcomed && bye
+	net_lobby_close()
+	net_news_set(msg, true)
+}
+
+// A frame in the lobby: the packets in, answered; the joining peer's hello.
+net_lobby_poll :: proc() {
+	buf: [2048]u8
+	for net_lobby {
+		n, from, err := net.recv_udp(nt.sock, buf[:])
+		if err != nil {break}
+		if n < size_of(Net_Head) {continue}
+		head := (^Net_Head)(&buf[0])
+		if head.magic != NET_MAGIC {continue}
+		if net_slot == 0 {
+			net_lobby_host(head.kind, buf[:n], from)
+		} else if from == nt.peer {
+			net_lobby_join(head.kind, buf[:n])
+		}
+	}
+	switch {
+	case !net_lobby:
+	case net_slot == 0:
+		if nt.welcomed && time.tick_since(nt.heard) > NET_LOST {
+			nt.welcomed = false
+			net_news_set("the friend that joined was lost")
+		}
+	case net_start_row >= 0:
+	case !nt.welcomed && time.tick_since(nt.opened) > NET_JOIN_WAIT:
+		net_lobby_fail("no answer from the host")
+	case nt.welcomed && time.tick_since(nt.heard) > NET_LOST:
+		net_lobby_fail("the host was lost")
+	case time.tick_since(nt.said) >= NET_HELLO_EVERY:
+		h := Net_Hello{kind = .Hello, cfg = nt.cfg, hero = nt.pick, now = i64(host_now())}
+		net_send(&h)
+		nt.said = time.tick_now()
+	}
+}
+
+// A packet b of kind k from from in the host's lobby: a hello with our
+// config welcomed, the peer it is from the one play starts with.
+@(private = "file")
+net_lobby_host :: proc(k: Net_Kind, b: []u8, from: net.Endpoint) {
+	#partial switch k {
+	case .Hello:
+		if len(b) < size_of(Net_Hello) {return}
+		h := (^Net_Hello)(&b[0])
+		if why := net_cfg_check(h.cfg); why != .None {
+			r := Net_Reject{kind = .Reject, why = why}
+			net_send_to(&r, from)
+			return
+		}
+		if !nt.welcomed || from != nt.peer {
+			net_news_set(fmt.tprintf("%s joined; start a new game or load one to play", net.endpoint_to_string(from)))
+		}
+		nt.peer, nt.welcomed, nt.heard, nt.pick = from, true, time.tick_now(), h.hero
+		nt.peer_now = time.Duration(h.now)
+		net_welcome(false)
+	case .Bye:
+		if !nt.welcomed || from != nt.peer {return}
+		nt.welcomed = false
+		net_news_set("the friend that joined left")
+	}
+}
+
+// A packet b of kind k from the host in the joining peer's lobby.
+@(private = "file")
+net_lobby_join :: proc(k: Net_Kind, b: []u8) {
+	nt.heard = time.tick_now()
+	#partial switch k {
+	case .Reject:
+		why := len(b) >= size_of(Net_Reject) ? (^Net_Reject)(&b[0]).why : .None
+		if why > max(Net_Mismatch) {why = .None}
+		net_lobby_fail(NET_MISMATCH_SAY[why])
+	case .Bye:
+		net_lobby_fail("the host closed the online game", false)
+	case .Welcome:
+		if len(b) < size_of(Net_Welcome) || net_start_row >= 0 {return}
+		w := (^Net_Welcome)(&b[0])
+		if !nt.welcomed {
+			nt.welcomed = true
+			net_news_set("in the host's game: play starts when the host starts a new game or loads one")
+		}
+		if !w.rejoin {return}
+		nt.epoch, nt.clock0, nt.delay, nt.hero = w.epoch, w.clock0, i64(w.delay), w.hero
+		clear(&nt.switches)
+		append(&nt.switches, ..w.switches[:min(int(w.switch_n), NET_SWITCH_MAX)])
+		nt.row = min(w.row, 1)
+		net_start_row = i32(nt.row)
+	}
+}
+
+// The config both peers must have the same of and the delay's start, once.
+@(private = "file")
+net_cfg_make :: proc() {
+	if nt.cfg.version != 0 {return}
 	nt.cfg = {
 		version = NET_VERSION,
 		port    = port_id(),
-		exe     = exe_hash(exe),
+		exe     = exe_hash(relaunch_exe),
 		files   = files_hash(),
 	}
-	// Frames 0 and 1 run before the first exchange, on released pads.
-	append(&nt.log, [2]Pad_Input{}, [2]Pad_Input{})
-	append(&nt.hashes, 0)
 	nt.delay = -1
-	nt.hero, nt.pick = hero, hero
 	if d, ok := strconv.parse_int(os.get_env("JE_NET_DELAY", context.temp_allocator), 10); ok {
 		nt.delay = i64(clamp(d, 0, NET_DELAY_MAX))
 		nt.fixed = true
 	}
+}
+
+// On the host at its New Game or Load Game, row 0 or 1, in the lobby: Save,
+// the ini, settings and game options opts as they are now kept for peers
+// that join; hero, the host's pick of player 2's hero for play alone. Play
+// starts at the next Present (net_begin).
+net_host_start :: proc(row: u8, settings: []i32, opts: []u8, hero: i32) {
+	nt.row, nt.hero = row, hero
+	net_save_host(settings, opts)
 	net_on = true
-	if port != "" {
-		p, ok := strconv.parse_int(port, 10)
-		if !ok {net_fail("JE_NET_HOST=%s is not a port", port)}
-		sock, err := net.make_bound_udp_socket(net.IP4_Any, p)
-		if err != nil {net_fail("cannot listen on port %d: %v", p, err)}
-		nt.sock = sock
-		net_slot = 0
+	lock_pending = true
+}
+
+// On the joining peer at the host's start (net_start_row): the host's Save,
+// ini, settings and game options fetched (net_save.odin), before the menu
+// starts the row. Play starts at the next Present (net_begin).
+net_join_start :: proc() {
+	net_on = true
+	m, _ := net_blob_fetch(NET_BLOB_MANIFEST, "the save list", NET_MANIFEST_MAX, NET_JOIN_WAIT)
+	net_save_join(m)
+	delete(m)
+	lock_pending = true
+}
+
+// Player 2's hero at the start of play.
+net_hero :: proc() -> i32 {return nt.hero}
+
+// At the Present that starts play: lockstep from the clocks both peers
+// agree on. The host plays alone, the peer in its lobby joining as a rejoin
+// (net_rejoin_hello); the joining peer replays the host's log from here.
+net_begin :: proc() {
+	if net_slot == 0 {
+		clock := host_now()
+		if nt.welcomed {
+			clock = max(clock, nt.peer_now + time.tick_since(nt.heard))
+			nt.hero = nt.pick
+		}
+		nt.clock0 = i64(clock + NET_CLOCK_LEAD)
 		nt.epoch = time.time_to_unix_nano(time.now())
-		net_save_host(settings)
-		if open {
-			nt.alone = true
-			if nt.delay < 0 {nt.delay = NET_DELAY_OPEN}
-			fmt.eprintfln("net: hosting on port %d, open: peers join while it plays", p)
-			upnp_start(p)
-		} else {
-			fmt.eprintfln("net: hosting on port %d, waiting for a peer", p)
-			net_host_wait()
-		}
+		nt.alone = true
+		if nt.delay < 0 {nt.delay = NET_DELAY_START}
 	} else {
-		ep, err := net.resolve_ip4(addr)
-		if err != nil {net_fail("cannot resolve %s: %v", addr, err)}
-		sock, serr := net.make_unbound_udp_socket(.IP4)
-		if serr != nil {net_fail("cannot open a socket: %v", serr)}
-		nt.sock, nt.peer = sock, ep
-		net_slot = 1
-		fmt.eprintfln("net: joining %s", net.endpoint_to_string(ep))
-		net_join_wait()
-		title_set(fmt.tprintf("online with %s", addr))
+		nt.rejoin = true
+		nt.heard = time.tick_now()
 	}
-	if net.set_blocking(nt.sock, false) != nil {net_fail("cannot make the socket non-blocking")}
-	if net_slot == 1 {
-		// A host that is not open answers once it boots, after its welcome.
-		m, _ := net_blob_fetch(NET_BLOB_MANIFEST, "the save list", NET_MANIFEST_MAX, NET_JOIN_WAIT)
-		net_save_join(m)
-		delete(m)
-		if nt.rejoin {
-			lock_fast = true
-			nt.heard = time.tick_now()
-			fmt.eprintfln("net: rejoining a game in play, player 2's hero %d", nt.hero)
-		}
-	}
-	lock_epoch = nt.epoch
+	lock_begin(time.Duration(nt.clock0), nt.epoch)
+	if nt.rejoin {lock_fast_set(true)}
+	// Frames 0 and 1 run before the first exchange, on released pads.
+	append(&nt.log, [2]Pad_Input{}, [2]Pad_Input{})
+	append(&nt.hashes, 0)
 	// Frames up to the delay have no input from either side: centred,
 	// released. Both peers have them.
 	nt.local_top, nt.remote_top, nt.acked = nt.delay, nt.delay, nt.delay
 	nt.delay_lo, nt.delay_hi = nt.delay, nt.delay
 	nt.calm = time.tick_now()
-	if !open {fmt.eprintfln("net: connected to %s as player %d, delay %d frames, player 2's hero %d", net.endpoint_to_string(nt.peer), net_slot + 1, nt.delay, nt.hero)}
-	return nt.hero
+	net_lobby = false
+	fmt.eprintfln("net: play starts at %s as player %d, player 2's hero %d", nt.row == 0 ? "New Game" : "Load Game", net_slot + 1, nt.hero)
 }
 
 // Logs why online play cannot go on and exits, or for a game the main menu
@@ -383,7 +616,7 @@ net_fail :: proc(f: string, args: ..any) -> ! {
 
 // At exit: the socket closed, so a game run again can take its port.
 net_close :: proc() {
-	if !net_on || nt.sock == 0 {return}
+	if nt.sock == 0 {return}
 	net.close(nt.sock)
 	nt.sock = 0
 }
@@ -397,61 +630,6 @@ net_send :: proc(p: ^$T) {
 net_send_to :: proc(p: ^$T, to: net.Endpoint) {
 	p.magic = NET_MAGIC
 	_, _ = net.send_udp(nt.sock, slice.bytes_from_ptr(p, size_of(T)), to)
-}
-
-// Blocks until a peer says hello with the same config, and welcomes it.
-@(private = "file")
-net_host_wait :: proc() {
-	buf: [2048]u8
-	for {
-		n, from, err := net.recv_udp(nt.sock, buf[:])
-		if err != nil || n < size_of(Net_Hello) {continue}
-		h := (^Net_Hello)(&buf[0])
-		if h.magic != NET_MAGIC || h.kind != .Hello {continue}
-		nt.peer = from
-		if why := net_cfg_check(h.cfg); why != .None {
-			r := Net_Reject{kind = .Reject, why = why}
-			net_send(&r)
-			continue
-		}
-		nt.hero = h.hero
-		if nt.delay < 0 {nt.delay = net_pick_delay()}
-		net_welcome(false)
-		return
-	}
-}
-
-// Times NET_PINGS round trips to the peer, one at a time, and picks the
-// delay from them.
-@(private = "file")
-net_pick_delay :: proc() -> i64 {
-	if net.set_option(nt.sock, .Receive_Timeout, 20 * time.Millisecond) != nil {
-		net_fail("cannot set a receive timeout")
-	}
-	rtt: [NET_PINGS]time.Duration
-	got := 0
-	buf: [2048]u8
-	for i in 0 ..< NET_PINGS {
-		p := Net_Ping{kind = .Ping, seq = u32(i)}
-		net_send(&p)
-		sent := time.tick_now()
-		for time.tick_since(sent) < NET_PING_WAIT {
-			n, from, err := net.recv_udp(nt.sock, buf[:])
-			if err != nil || from != nt.peer || n < size_of(Net_Ping) {continue}
-			r := (^Net_Ping)(&buf[0])
-			if r.magic != NET_MAGIC || r.kind != .Pong || r.seq != u32(i) {continue}
-			rtt[got] = time.tick_since(sent)
-			got += 1
-			break
-		}
-	}
-	if got == 0 {net_fail("no pings came back")}
-	slice.sort(rtt[:got])
-	hi := rtt_pick(rtt[:got])
-	d := delay_for(hi)
-	ms :: time.duration_milliseconds
-	fmt.eprintfln("net: %d of %d pings back, round trip %.1f to %.1f ms, %.1f ms within %d of %d; delay %d frames", got, NET_PINGS, ms(rtt[0]), ms(rtt[got - 1]), ms(hi), NET_PING_KEEP, NET_PINGS, d)
-	return d
 }
 
 // Of the round trips rtt, sorted, the one NET_PING_KEEP of NET_PINGS came
@@ -468,53 +646,13 @@ delay_for :: proc(rtt: time.Duration) -> i64 {
 	return clamp(d, NET_DELAY_MIN, NET_DELAY_MAX)
 }
 
+// rejoin: play has started, the welcome's fields for joining it.
 @(private = "file")
 net_welcome :: proc(rejoin: bool) {
-	w := Net_Welcome{kind = .Welcome, epoch = nt.epoch, delay = i32(nt.delay), hero = nt.hero, rejoin = b8(rejoin)}
+	w := Net_Welcome{kind = .Welcome, epoch = nt.epoch, clock0 = nt.clock0, delay = i32(nt.delay), hero = nt.hero, rejoin = b8(rejoin), row = nt.row}
 	w.switch_n = u8(len(nt.switches))
 	copy(w.switches[:], nt.switches[:])
 	net_send(&w)
-}
-
-// Says hello until the host welcomes or rejects us.
-@(private = "file")
-net_join_wait :: proc() {
-	if net.set_option(nt.sock, .Receive_Timeout, 100 * time.Millisecond) != nil {
-		net_fail("cannot set a receive timeout")
-	}
-	start := time.tick_now()
-	hello: time.Tick
-	buf: [2048]u8
-	for time.tick_since(start) < NET_JOIN_WAIT {
-		if time.tick_since(hello) >= 100 * time.Millisecond {
-			h := Net_Hello{kind = .Hello, cfg = nt.cfg, hero = nt.hero}
-			net_send(&h)
-			hello = time.tick_now()
-		}
-		n, _, err := net.recv_udp(nt.sock, buf[:])
-		if err != nil || n < size_of(Net_Head) {continue}
-		head := (^Net_Head)(&buf[0])
-		if head.magic != NET_MAGIC {continue}
-		#partial switch head.kind {
-		case .Ping:
-			if n < size_of(Net_Ping) {continue}
-			p := (^Net_Ping)(&buf[0])^
-			p.kind = .Pong
-			net_send(&p)
-		case .Reject:
-			why := n >= size_of(Net_Reject) ? (^Net_Reject)(&buf[0]).why : .None
-			if why > max(Net_Mismatch) {why = .None}
-			net_fail("%s", NET_MISMATCH_SAY[why])
-		case .Welcome:
-			if n < size_of(Net_Welcome) {continue}
-			w := (^Net_Welcome)(&buf[0])
-			nt.epoch, nt.delay, nt.hero, nt.rejoin = w.epoch, i64(w.delay), w.hero, bool(w.rejoin)
-			clear(&nt.switches)
-			append(&nt.switches, ..w.switches[:min(int(w.switch_n), NET_SWITCH_MAX)])
-			return
-		}
-	}
-	net_fail("no answer from the host")
 }
 
 // Logs the mismatch it returns.
@@ -555,6 +693,7 @@ net_frame :: proc(next: i64, local: Pad_Input) {
 	if next % NET_HASH_EVERY == 0 {
 		nt.hash_frame, nt.hash, nt.hash_at = next, net_hash(next), nt.local_top
 		net_hash_check()
+		net_fix_snap(next)
 	}
 	start := time.tick_now()
 	nt.waiting = start
@@ -589,8 +728,58 @@ net_frame :: proc(next: i64, local: Pad_Input) {
 	} else {
 		pad_in[net_slot] = nt.local[next & (NET_RING - 1)]
 		pad_in[1 - net_slot] = nt.remote[next & (NET_RING - 1)]
+		net_fix_due(next)
 	}
 	net_log_add(next)
+}
+
+// At hash frame next: this peer's creatures' state, kept, and on the host
+// sent.
+@(private = "file")
+net_fix_snap :: proc(next: i64) {
+	if net_fix_take == nil {return}
+	own := &nt.fix_own[(next / NET_HASH_EVERY) % NET_FIX_KEEP]
+	own.frame = next
+	clear(&own.e)
+	net_fix_take(&own.e)
+	if net_slot != 0 {return}
+	buf: [size_of(Net_Fix) + NET_FIX_CHUNK * size_of(Net_Fix_Entry)]u8
+	for at := 0; at < len(own.e); at += NET_FIX_CHUNK {
+		n := min(len(own.e) - at, NET_FIX_CHUNK)
+		(^Net_Fix)(&buf[0])^ = {magic = NET_MAGIC, kind = .Fix, frame = u32(next), count = u16(n)}
+		copy(buf[size_of(Net_Fix):], slice.to_bytes(own.e[at:at + n]))
+		_, _ = net.send_udp(nt.sock, buf[:size_of(Net_Fix) + n * size_of(Net_Fix_Entry)], nt.peer)
+	}
+}
+
+// On the joining peer before frame next: the host's state that came, used
+// against its own of the same frame once it has that, dropped once it is
+// older than what it keeps.
+@(private = "file")
+net_fix_due :: proc(next: i64) {
+	for i := 0; i < len(nt.fix_in); {
+		c := &nt.fix_in[i]
+		own := &nt.fix_own[(c.frame / NET_HASH_EVERY) % NET_FIX_KEEP]
+		if own.frame == c.frame {
+			net_fix_apply(own.e[:], c.e[:c.n], c.frame)
+		} else if c.frame > next - NET_FIX_KEEP * NET_HASH_EVERY {
+			i += 1
+			continue
+		}
+		unordered_remove(&nt.fix_in, i)
+	}
+}
+
+// A Net_Fix packet b from the host.
+@(private = "file")
+net_fix_in :: proc(b: []u8) {
+	if net_slot != 1 || nt.rejoin || net_fix_apply == nil || len(b) < size_of(Net_Fix) {return}
+	p := (^Net_Fix)(&b[0])
+	n := int(p.count)
+	if n > NET_FIX_CHUNK || len(b) < size_of(Net_Fix) + n * size_of(Net_Fix_Entry) {return}
+	c := Net_Fix_Chunk{frame = i64(p.frame), n = n}
+	copy(slice.to_bytes(c.e[:n]), b[size_of(Net_Fix):])
+	append(&nt.fix_in, c)
 }
 
 // The host's frame next with no peer in play: player 2 released. It still
@@ -607,7 +796,7 @@ net_alone :: proc(next: i64, local: Pad_Input) {
 // The state hash at frame next, which the host logs.
 @(private = "file")
 net_hash :: proc(next: i64) -> u64 {
-	h := state_hash()
+	h := net_state_hash()
 	if net_slot == 0 {
 		assert(i64(len(nt.hashes)) == next / NET_HASH_EVERY)
 		append(&nt.hashes, h)
@@ -645,7 +834,7 @@ net_replay :: proc(next: i64) -> bool {
 	}
 	pad_in = nt.log[next]
 	if next % NET_HASH_EVERY == 0 && !nt.desynced {
-		if h := state_hash(); h != nt.hashes[next / NET_HASH_EVERY] {
+		if h := net_state_hash(); h != nt.hashes[next / NET_HASH_EVERY] {
 			fmt.eprintfln("net: desync replaying frame %d (ours %016x, host %016x)", next, h, nt.hashes[next / NET_HASH_EVERY])
 			nt.desynced = true
 		}
@@ -1032,6 +1221,8 @@ net_take :: proc(k: Net_Kind, b: []u8, from: net.Endpoint) -> bool {
 		if net_slot == 0 && len(b) >= size_of(Net_Blob_Req) {net_blob_send((^Net_Blob_Req)(&b[0]))}
 	case .Blob:
 		if net_slot == 1 {net_blob_take(b)}
+	case .Fix:
+		net_fix_in(b)
 	}
 	return true
 }
@@ -1151,6 +1342,11 @@ net_end :: proc(bye: bool) {
 	ms :: time.duration_milliseconds
 	fmt.eprintfln("net: %d frames stalled on the peer, %.0f ms in all; delay %d to %d frames", nt.stalls, ms(nt.stalled), nt.delay_lo, nt.delay_hi)
 }
+
+// The hash peers compare: native code's of the game's state, which
+// lock_begin makes the same on both whatever their menus did before
+// (native sync_hash.odin), or state_hash.
+net_state_hash: proc() -> u64 = state_hash
 
 // The game's globals, heap and virtual memory, and the virtual clock.
 state_hash :: proc() -> u64 {

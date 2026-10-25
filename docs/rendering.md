@@ -184,9 +184,10 @@ D3D9 sizes it asked for; enhancements live entirely on the GL side.
   (e.g. `J02_SKY_INTRO.bik` before that conversation): the movie loop 0x55a700
   presents once per movie frame at the movie's own rate, and the game does not
   update meanwhile (the frame counter at 0x76c918 stands still).
-- `JE_FPS=N` overrides `ClampFPS` to 0 for the session (an `ini_override`;
-  the file is not written) and Present then sleeps to hold N fps.
-  `JE_FPS=0` lifts the cap and leaves only vsync. Unset: the game's own cap.
+- The port overrides `ClampFPS` to 0 for every session (an `ini_override`;
+  the file is not written) and Present sleeps to hold the Frame Rate setting
+  (`JE_FPS=N`), 30 included, so a change is live. `JE_FPS=0` leaves only
+  vsync. Online games run at 60 on both peers (docs/hle.md §11).
 - Menus. With `JE_FPS` set, Present holds `JE_MENU_FPS` (default 60) while
   GUI panel 0x02 `MAINGAME` (main menu, load list) or 0x2c `LTI_INGAMETABS`
   (the in-game menu: Escape, J, I, C) is open, when that is below `JE_FPS`.

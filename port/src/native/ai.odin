@@ -578,6 +578,9 @@ dice: rand.Default_Random_State
 @(private = "file")
 dice_set: bool
 
+// At the start of lockstep play: the dice rolled again from 0.
+ai_dice_reset :: proc() {dice_set = false}
+
 @(private = "file")
 roll :: proc(chance: f32) -> bool {
 	if !dice_set {

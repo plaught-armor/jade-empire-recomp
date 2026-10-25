@@ -265,6 +265,8 @@ GUI_ROOT :: 0x005da240
 Scene_Tick_005df230 :: proc() {
 	phase := ld(x86.cpu.esp + 4)
 	if phase == 2 {coop_cam_ear()}
+	if phase == 1 || phase == 2 {win32.heap_render += 1}
+	defer if phase == 1 || phase == 2 {win32.heap_render -= 1}
 	if phase == 0 || phase > 2 || !coop_cam_dual() {
 		guest_scene_tick()
 		return
@@ -295,6 +297,8 @@ Scene_Tick_005df230 :: proc() {
 Gui_Draw_0051e090 :: proc() {
 	coop_hench_panel_hide(x86.cpu.ecx)
 	defer coop_hench_panel_show()
+	win32.heap_render += 1
+	defer win32.heap_render -= 1
 	if !dual.gui {
 		guest_gui_draw()
 		return

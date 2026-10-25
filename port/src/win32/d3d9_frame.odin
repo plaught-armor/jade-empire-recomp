@@ -437,7 +437,8 @@ Dev_Present :: proc() {
 		frame_dump(b, fmt.tprintf("%s/frame_%05d.ppm", frame_dump_dir, frame_count))
 	}
 	play_log(b)
-	if lockstep {lock_frame()}
+	if lockstep {lock_frame()} else if lock_pending {lock_start()}
+	if net_lobby && !lockstep {net_lobby_poll()}
 	ds_pump()
 	frame_count += 1
 	x86.frame_now = frame_count

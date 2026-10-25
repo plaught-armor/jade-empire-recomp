@@ -121,6 +121,14 @@ hero_switch :: proc(h: int) {
 	hero_ready = false
 }
 
+// At the start of online play, before player 2 is spawned: hero h, the
+// host's (net_hero), in place of a pick made in the menu.
+coop_hero_start :: proc(h: i32) {
+	if h < 0 || int(h) >= len(HEROES) {return}
+	hero, hero_ready, hero_drop, coop_hero_next = int(h), false, 0, -1
+	win32.res_gen_set(HERO_TEMPLATE, hero_template(HEROES[hero].appearance))
+}
+
 @(private = "file")
 look_script: []u8 // HERO_LOOK_NCS with the appearance filled in
 

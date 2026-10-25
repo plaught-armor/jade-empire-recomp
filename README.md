@@ -159,7 +159,9 @@ from the same version of this repository and the same Odin version.
 2. UDP port 47000 is opened through UPnP when the router allows it. Otherwise,
    forward it by hand.
 3. The other player picks **Online → Join Online Game** and types or pastes
-   that address.
+   that address. The game does not restart: both stay in the title menu.
+4. The host starts a new game or loads one, and play starts for both. A
+   friend can also join later, while the host plays.
 
 Online, both players play with a controller: the keyboard and mouse are not
 used during an online game.

@@ -484,7 +484,7 @@ instruction only when a reachable site appears.
 | `JE_FULLSCREEN=1` | Start in borderless fullscreen. |
 | `JE_INTRO=1` | Play the boot logo and movie sequence; the default overrides `[Render] NoLogos=1`, which skips it (0x551240). `NoMovies` is never forced: it stops every Bink movie, in-game ones included (0x6801b0), and a scripted `PlayMovieBlocking` then never returns control. |
 | `JE_SCALE=N` | Render-target scale; 0 or unset = auto. See `docs/rendering.md` §1. |
-| `JE_FPS=N` | Lift the game's 30 fps cap (`ClampFPS`) and cap at N fps instead; 0 = vsync only. Unset: the game's cap. See `docs/rendering.md` §5. |
+| `JE_FPS=N` | Cap at N fps; 0 = vsync only. The game's own 30 fps cap (`ClampFPS`) is always off, Present holds the rate. See `docs/rendering.md` §5. |
 | `JE_NATIVE=0\|check` | `0`: run the recompiled bodies of the §8 native replacements. `check`: run both on every call from the same state, report the first 20 differences in registers, x87 state or outputs, and keep the guest's result. |
 | `JE_MENU_FPS=N` | With `JE_FPS`: cap at N fps while a menu is up (default 60; 0 = menus at `JE_FPS`). See `docs/rendering.md` §5. |
 | `JE_ANISO=N` | Minimum anisotropy on linear mipmapped samplers, default 16; 1 = off. See `docs/rendering.md` §2. |
@@ -1925,7 +1925,7 @@ wins; an online joiner then takes the host's value of every setting outside
 
 | Key | Row | Values | Default | Applies |
 |---|---|---|---|---|
-| FPS | Frame Rate | 30, 60, 90, 120, 144, 165, 240, 0 (unlimited) | 30 | 30 keeps the game's `ClampFPS`, read once at boot, so moving to or from 30 needs a restart; other rates change live |
+| FPS | Frame Rate | 30, 60, 90, 120, 144, 165, 240, 0 (unlimited) | 30 | live; the game's `ClampFPS` (read once at boot) is always off and Present holds every rate, 30 included; online games run at 60 |
 | MENU_FPS | Menu Frame Rate | 30, 60, 120, 0 (same as game) | 60 | live |
 | SCALE | Render Scale | 0 (auto), 1–4 | 0 | restart |
 | SMAA | SMAA | 0, 1 | 1 | live |

@@ -5,18 +5,21 @@
 // Game in an online game, each with a Back row (B goes back too). The panel
 // is built once with the top level's five buttons; a level change relabels
 // them and refills the list box with as many as the level has, the next
-// frame, outside the button's own event. The online rows start the port
-// over (win32 relaunch) with the online settings changed, since lockstep
-// play starts at boot: hosting opens the game to a peer joining while it
-// plays, joining asks for the host's address in the menu's help line (win32
-// join_edit) and joins through the rejoin path. A failed online game starts
-// over alone with its reason (JE_NET_ERROR), shown once in the help line.
-// The new rows' strings are appended to dialog.tlk (win32 tlk_extra).
-// Online, the menu runs on player 1's inputs on both peers, and so does the
-// level. WHY: docs/hle.md §11
+// frame, outside the button's own event. The online rows open a lobby here
+// in the menu (win32 net.odin): hosting opens the game to a peer joining,
+// joining asks for the host's address in the menu's help line (win32
+// join_edit). Play starts for both at the host's New Game or Load Game: the
+// joining peer takes the host's saves, settings and game options and
+// activates the same row, and lockstep runs on both from the next Present.
+// The lobby's news shows in the help line. A failed online game starts over
+// alone with its reason (JE_NET_ERROR), shown once in the help line. The
+// new rows' strings are appended to dialog.tlk (win32 tlk_extra). Online,
+// the menu runs on player 1's inputs on both peers, and so does the level.
+// WHY: docs/hle.md §11
 package native
 
 import "core:fmt"
+import "core:strconv"
 import "core:strings"
 import "../win32"
 import "../x86"
@@ -33,6 +36,8 @@ MENU_HELP :: 0xda8 // the panel's help line
 MENU_LISTBOX :: 0x2c4 // the panel's list box of row buttons
 MENU_ROWS_MAX :: 5 // the top level's rows: the buttons the panel builds
 MENU_ROW_H :: 0x19 // a row's height in the list box, as the panel sets it
+MENU_SHOWN :: 0x3d8 // f32, 1 once the panel is in and takes rows
+MENU_ACTIVATE :: 0x0056a570 // thiscall (button, n), ret 8
 MENU_FOCUS_SAVED :: 0xed44 // in the client (0x0076c924): the row focused at the panel's build
 CLIENT :: 0x0076c924
 LB_COUNT :: 0x4f0
@@ -51,11 +56,11 @@ Online_Str :: enum u8 {Host, Host_Desc, Join, Join_Desc, Leave, Leave_Desc, Sing
 
 ONLINE_STRS := [Online_Str]string {
 	.Host       = "Host Online Game",
-	.Host_Desc  = "Play this game online with a friend. The game starts over, open for them to join while you play; the address they join goes in the window title and on the clipboard. The router's port is opened by UPnP when it allows.",
+	.Host_Desc  = "Play this game online with a friend: they join here, then start a new game or load one and play starts for both. They can also join later, while you play. The address they join goes in the window title and on the clipboard. The router's port is opened by UPnP when it allows.",
 	.Join       = "Join Online Game",
-	.Join_Desc  = "Join a friend's online game by the address their window title shows. The game starts over in theirs, as player 2.",
+	.Join_Desc  = "Join a friend's online game by the address their window title shows, as player 2. Play starts when they start a new game or load one; in a game they already play, it starts at once.",
 	.Leave      = "Leave Online Game",
-	.Leave_Desc = "End the online game and play alone; the game starts over. A host's address to join is in the window title.",
+	.Leave_Desc = "Close the online game and play alone; in play, the game starts over. A host's address to join is in the window title.",
 	.Single      = "Singleplayer",
 	.Single_Desc = "Play alone: start a new game, load a saved one, or play the mini-games.",
 	.Online      = "Online",
@@ -140,7 +145,7 @@ menu_list_set :: proc(level: Menu_Level) -> int {
 	case .Single:
 		rows = {menu_stock[0], menu_stock[1], menu_stock[2], own(.Back)}
 	case .Online:
-		rows = win32.net_on ? {own(.Leave), own(.Back)} : {own(.Host), own(.Join), own(.Back)}
+		rows = win32.net_on || win32.net_lobby ? {own(.Leave), own(.Back)} : {own(.Host), own(.Join), own(.Back)}
 	}
 	if int(ld(MENU_LIST + 4)) < len(rows) {x86.fatal("menu: the main menu's row list holds %d, not %d", ld(MENU_LIST + 4), len(rows))}
 	p := ld(MENU_LIST + 8)
@@ -205,12 +210,30 @@ Menu_Activate_0056a570 :: proc() {
 		return
 	}
 	if n > 0 || n < -1 {
-		if r, ok := online_row(ld(button + BUTTON_STRREF)); ok {
+		ref := ld(button + BUTTON_STRREF)
+		if r, ok := online_row(ref); ok {
 			saved := x86.cpu
 			online_activate(this, r)
 			x86.cpu = saved
 			c.esp += 12
 			return
+		}
+		if !win32.lockstep && !win32.net_on && (ref == menu_stock[0].label || ref == menu_stock[1].label) {
+			row := u8(ref == menu_stock[0].label ? 0 : 1)
+			if win32.net_lobby && win32.net_slot != 0 {
+				saved := x86.cpu
+				menu_say(this, "the host starts play")
+				x86.cpu = saved
+				c.esp += 12
+				return
+			}
+			if win32.net_lobby {
+				saved := x86.cpu
+				win32.net_host_start(row, settings_vals(), sync_opts(), coop_hero_pick())
+				x86.cpu = saved
+			} else if win32.lock_solo {
+				win32.lock_pending = true
+			}
 		}
 	}
 	guest_menu_activate()
@@ -226,8 +249,17 @@ online_activate :: proc(this: u32, r: Online_Str) {
 	case .Back:
 		menu_next = .Top
 	case .Host:
-		port := ini_port()
-		win32.relaunch(true, fmt.tprintf("JE_NET_HOST=%s", port), "JE_NET_OPEN=1", "JE_NET_MENU=1")
+		port, ok := strconv.parse_int(ini_port(), 10)
+		if !ok || port <= 0 || port > 0xffff {
+			menu_say(this, fmt.tprintf("NET_PORT %s is no port", ini_port()))
+			return
+		}
+		if err := win32.net_host_open(port); err != "" {
+			menu_say(this, err)
+			return
+		}
+		win32.net_menu = true
+		menu_next = .Online
 	case .Join:
 		addr := win32.join_clipboard()
 		if addr == "" {
@@ -236,6 +268,11 @@ online_activate :: proc(this: u32, r: Online_Str) {
 		win32.join_edit_open(addr)
 		join_show(this)
 	case .Leave:
+		if win32.net_lobby {
+			win32.net_lobby_close()
+			menu_next = .Online
+			return
+		}
 		if win32.net_slot == 0 {win32.relaunch(true)}
 		win32.relaunch(true, "JE_NET_ERROR=the host ended the online game")
 	}
@@ -253,11 +290,23 @@ join_show :: proc(this: u32) {
 	text_set(this + MENU_HELP, fmt.tprintf("Join at: %s\n%s", win32.join_edit_shown(), JOIN_HINT))
 }
 
-// A frame of the menu, thiscall(?), ret 4: shows a level change and drives
-// the address editor.
+// A frame of the menu, thiscall(?), ret 4: shows the lobby's news and a
+// level change, starts play on the joining peer and drives the address
+// editor.
 Menu_Update_00569d50 :: proc() {
 	this := x86.cpu.ecx
 	guest_menu_update()
+	if msg, ended, ok := win32.net_news_take(); ok {
+		saved := x86.cpu
+		menu_say(this, msg)
+		x86.cpu = saved
+		if ended && menu_level == .Online {menu_next = .Online}
+	}
+	if win32.net_start_row >= 0 && !win32.net_on && transmute(f32)ld(this + MENU_SHOWN) == 1 {
+		saved := x86.cpu
+		join_start(this)
+		x86.cpu = saved
+	}
 	if menu_next != nil {
 		saved := x86.cpu
 		menu_level_show(this)
@@ -281,10 +330,44 @@ Menu_Update_00569d50 :: proc() {
 		if !win32.ini_write(SETTINGS_INI, SETTINGS_SECTION, "NET_JOIN", addr) {
 			fmt.eprintfln("menu: cannot write NET_JOIN to %s", SETTINGS_INI)
 		}
-		win32.relaunch(true, fmt.tprintf("JE_NET_JOIN=%s", addr), "JE_NET_MENU=1")
+		win32.join_edit_close()
+		if err := win32.net_join_open(addr, coop_hero_pick()); err != "" {
+			menu_say(this, err)
+			return
+		}
+		win32.net_menu = true
+		menu_say(this, "waiting for the host")
+		menu_next = .Online
 	case .Cancelled:
 		join_cancel(this)
 	}
+}
+
+// On the joining peer at the host's start: the host's saves, settings and
+// game options taken, and its row activated as the host's was, through the
+// first row button relabelled for it.
+@(private = "file")
+join_start :: proc(this: u32) {
+	row := win32.net_start_row
+	win32.net_start_row = -1
+	win32.net_join_start()
+	settings_sync(win32.net_settings)
+	sync_opts_apply(win32.net_opts)
+	b := menu_buttons[0]
+	if b == 0 {b = ld(ld(this + MENU_LISTBOX + LB_CONTROLS))}
+	ref := ld(b + BUTTON_STRREF)
+	st(b + BUTTON_STRREF, menu_stock[row].label)
+	thiscall(MENU_ACTIVATE, this, b, 1)
+	st(b + BUTTON_STRREF, ref)
+	st(ld(CLIENT) + MENU_FOCUS_SAVED, u32(row))
+}
+
+// msg in the help line until a second row is focused.
+@(private = "file")
+menu_say :: proc(this: u32, msg: string) {
+	delete(menu_error)
+	menu_error, menu_error_at = strings.clone(msg), 0
+	text_set(this + MENU_HELP, fmt.tprintf("Online: %s", menu_error))
 }
 
 @(private = "file")

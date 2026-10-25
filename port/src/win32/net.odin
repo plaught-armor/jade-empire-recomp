@@ -35,6 +35,7 @@ import "core:fmt"
 import "core:hash/xxhash"
 import "core:net"
 import "core:os"
+import "core:path/filepath"
 import "core:slice"
 import "core:strconv"
 import "core:strings"
@@ -43,7 +44,7 @@ import "vendor:zlib"
 import "../x86"
 
 NET_MAGIC :: 0x494e454a // "JENI"
-NET_VERSION :: 12
+NET_VERSION :: 13
 // The delay covers half the round trip most inputs were acked within
 // (NET_PING_KEEP of NET_PINGS) plus NET_DELAY_MARGIN frames for frame-time
 // jitter, and is at least NET_DELAY_MIN.
@@ -119,7 +120,6 @@ Net_Head :: struct #packed {
 Net_Config :: struct #packed {
 	version: u32,
 	port:    u64, // this port's build: port_id
-	exe:     u64, // the unpacked game exe
 	files:   u64, // names and sizes under override
 }
 
@@ -162,13 +162,12 @@ NET_SWITCH_MAX :: 16
 net_hero_switch: i32 = -1
 
 // Which part of the config differs, as the host tells a peer it turns away.
-Net_Mismatch :: enum u8 {None, Version, Port, Exe, Files}
+Net_Mismatch :: enum u8 {None, Version, Port, Files}
 
 NET_MISMATCH_SAY := [Net_Mismatch]string {
 	.None     = "the host turned us away",
 	.Version  = "the host runs another version of the port",
 	.Port     = "the host runs another build of the port (build both from the same commit)",
-	.Exe      = "the host has another JadeEmpire.exe",
 	.Files    = "the host's override differs from ours",
 }
 
@@ -545,7 +544,6 @@ net_cfg_make :: proc() {
 	nt.cfg = {
 		version = NET_VERSION,
 		port    = port_id(),
-		exe     = exe_hash(relaunch_exe),
 		files   = files_hash(),
 	}
 	nt.delay = -1
@@ -669,7 +667,6 @@ net_cfg_check :: proc(c: Net_Config) -> Net_Mismatch {
 	switch {
 	case c.version != m.version: fmt.eprintfln("net: peer runs another port version (%d, ours %d)", c.version, m.version); return .Version
 	case c.port != m.port: fmt.eprintln("net: peer runs another build of the port (build both from the same commit, or copy one jade binary to both)"); return .Port
-	case c.exe != m.exe: fmt.eprintln("net: peer has another JadeEmpire.exe"); return .Exe
 	case c.files != m.files: fmt.eprintln("net: peer's override differs"); return .Files
 	}
 	return .None
@@ -1492,15 +1489,6 @@ self_path :: proc() -> string {
 	return p
 }
 
-// The game exe's code only, so a peer on the GOG exe meets one on the unpacked
-// Steam exe (the same build).
-@(private = "file")
-exe_hash :: proc(path: string) -> u64 {
-	text := exe_text(path, context.temp_allocator)
-	if text == nil {net_fail("cannot read %s", path)}
-	return xxhash.XXH3_64(text)
-}
-
 @(private = "file")
 file_hash :: proc(path: string) -> u64 {
 	data, err := os.read_entire_file(path, context.temp_allocator)
@@ -1508,8 +1496,12 @@ file_hash :: proc(path: string) -> u64 {
 	return xxhash.XXH3_64(data)
 }
 
-// Every file under override, by path (lower case, sorted) and size.
-// textures_hd is left out: HD textures only change what is drawn, never the
+// Texture files, which files_hash leaves out.
+@(private = "file")
+NET_TEXTURE_EXTS :: []string{".txb", ".tpc", ".tga", ".dds", ".txi"}
+
+// Every file under override but textures, by path (lower case, sorted) and
+// size. Textures, and textures_hd, only change what is drawn, never the
 // simulation, so peers may differ there.
 @(private = "file")
 files_hash :: proc() -> u64 {
@@ -1523,7 +1515,7 @@ files_hash :: proc() -> u64 {
 			n := fmt.tprintf("%s/%s", name, fi.name)
 			if fi.type == .Directory {
 				walk(p, n, list)
-			} else {
+			} else if !slice.contains(NET_TEXTURE_EXTS, strings.to_lower(filepath.ext(fi.name), context.temp_allocator)) {
 				append(list, fmt.tprintf("%s %d", strings.to_lower(n, context.temp_allocator), fi.size))
 			}
 		}

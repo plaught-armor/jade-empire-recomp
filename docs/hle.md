@@ -384,10 +384,11 @@ solo `JE_LOCKSTEP=10` hashes equal on Linux and Wine through frame 17600, and
 a Linux host with a Wine joiner checked hashes through frame 6960 with a save
 load and a fight. A build made without
 it hashes its own binary instead; `jade --version` and the first line of
-every log print it), a hash of the game exe's code (0x401000 to 0x6e1000 as
-loaded, so the GOG exe and the unpacked Steam exe match) and a hash of the
-names and sizes of the files under `override` (not `textures_hd`: textures
-do not touch the simulation); any difference is
+every log print it) and a hash of the names and sizes of the files under
+`override` but its textures (`.txb`, `.tpc`, `.tga`, `.dds`, `.txi`; nor
+`textures_hd`: textures do not touch the simulation). The game exe is not
+compared (protocol version 13): the port runs only on the exe its code was
+made from (`exe_find`), and never runs that exe's code; any difference is
 a REJECT with the reason logged on both sides. `Save`, `JadeEmpire.ini` and
 the gameplay settings are not compared: the joiner takes the host's (Save
 and settings from the host, below). HELLO also carries the joiner's pick of
@@ -649,7 +650,7 @@ is the joiner's own: `settings_sync` leaves `P2_HERO` out.
 `win32/net_save.odin`). The joiner plays on the host's `Save`, the host's
 `JadeEmpire.ini` and the host's gameplay settings, never on its own, so
 peers need not copy saves or match configs by hand and a rejoin always
-boots as the host did. Only the build ID, the game exe and `override` must match (the config check above).
+boots as the host did. Only the build ID and `override` must match (the config check above).
 
 - At boot, before it hosts, the host lists `Save` (every folder and file
   under it, sorted by name, with sizes) into a manifest with
